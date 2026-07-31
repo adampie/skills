@@ -5,13 +5,6 @@
     "schedule:weekly",
   ],
 
-  // Annotate any pinned version, anywhere in the repo, and Renovate tracks it:
-  //
-  //   # renovate: datasource=npm depName=prettier
-  //   PRETTIER_VERSION: 3.4.2
-  //
-  // versioning=<scheme> is optional; without it the datasource default applies.
-  // Engine is re2, so the pattern uses no lookarounds.
   "customManagers": [
     {
       "customType": "regex",
