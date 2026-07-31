@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "adampie",
+  "owner": {
+    "name": "adampie",
+    "url": "https://github.com/adampie"
+  },
+  "description": "Public Claude Code plugins and Agent Skills.",
+  "plugins": []
+}
