@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+
+# Scoped to worktrees so .claude/settings.json stays committable.
+.claude/worktrees/
+
+**/*.skill
+evals/results/
+
+node_modules/

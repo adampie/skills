@@ -1,0 +1,13 @@
+[tools]
+# claude-code is installed from aqua rather than npm because the npm package
+# fetches its platform binary in a postinstall, which pnpm blocks by default.
+claude-code = "2.1.220"
+zizmor = "1.28.0"
+
+[tasks.validate]
+description = "Validate the marketplace and every plugin it registers"
+run = "claude plugin validate . --strict"
+
+[tasks.zizmor]
+description = "Audit the GitHub Actions workflows for security issues"
+run = "zizmor .github/workflows/"
