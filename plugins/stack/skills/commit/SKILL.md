@@ -22,28 +22,49 @@ Check all of these before touching anything. Report the reason and stop.
 | Not a git repo | `git rev-parse --is-inside-work-tree` fails |
 | Nothing to commit | `git status --porcelain` is empty |
 | Detached HEAD | `git symbolic-ref -q HEAD` fails |
-| Mid-flight git operation | any of `.git/MERGE_HEAD`, `.git/CHERRY_PICK_HEAD`, `.git/REVERT_HEAD`, `.git/rebase-*`, `.git/gh-stack-rebase-state` exists |
+| Mid-flight git operation | the marker loop below prints anything |
 | Extension missing | `gh extension list` has no `gh stack` |
+
+Test the markers one at a time rather than with a glob:
+
+```bash
+for m in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-apply rebase-merge gh-stack-rebase-state; do
+  [ -e ".git/$m" ] && echo "in progress: $m"
+done
+```
+
+Silence means clear. A bare `ls .git/MERGE_HEAD .git/rebase-*` is not equivalent: in
+zsh an unmatched `.git/rebase-*` aborts the command before `ls` runs, so it prints
+`no matches found` and checks none of the paths, including ones that do exist.
 
 The rebase markers matter because splitting hunks part-way through a rebase writes
 commits onto a detached intermediate state that the rebase then discards.
 
-**Check the identity before committing, and never set it.** Compare `git config
-user.email` against the authors of recent history:
+**Check the identity before committing, and never set it.** Compare the configured address
+against the global config and the authors of recent history:
 
 ```bash
 git config user.email
+git config --global user.email
 git log -20 --format='%ae' | sort | uniq -c | sort -rn | head -3
 ```
 
-If the configured address does not appear in that list, say so and ask before
-committing. GitHub attributes a commit by email, so an unrecognised one produces commits
-that show "No user is associated with the committer email" and never link to the author's
-profile. Fixing that after the fact means rewriting history and force-pushing.
+Ask before committing only when the configured address matches **neither** the global
+config nor an author in that list. A local override disagreeing with both is the case
+worth stopping for.
 
-Use whatever git is already configured to use. Do not run `git config user.email`, and do
-not take an address from conversation context; a fresh `git init` inherits the global
-config, which is nearly always the right answer.
+Say nothing when it equals the global address, however unfamiliar this repo's history
+looks. A repo with a handful of commits, or one seeded by an earlier run that got the
+identity wrong, is no evidence against it, and prompting there teaches the user to wave
+the check through.
+
+GitHub attributes a commit by email, so an unrecognised one produces commits that show
+"No user is associated with the committer email" and never link to the author's profile.
+Fixing that after the fact means rewriting history and force-pushing.
+
+Use whatever git is already configured to use. Never run `git config user.email <address>`,
+and do not take an address from conversation context; a fresh `git init` inherits the
+global config, which is nearly always the right answer.
 
 ## Never commit secrets
 
@@ -110,6 +131,21 @@ Pick the path from what `gh stack view --json` returned in step 1.
 Always pass the branch name. Bare `gh stack init` and `gh stack add` open a prompt and
 hang. Names are used verbatim, so `gh stack add refactor/foo` creates `refactor/foo`.
 
+**Check every name is free first, locally and on the remote.** Pick another name and tell
+the user if either check hits:
+
+```bash
+git rev-parse --verify --quiet <name>          # local branch
+git ls-remote --exit-code --heads origin <name> # remote branch
+```
+
+`gh stack add` happily creates a layer whose name matches an abandoned remote branch from
+an earlier stack, and `gh stack view` then binds that layer to the old branch's open PR by
+name alone, writing the PR number into `.git/gh-stack` even though the two histories share
+nothing but trunk. Nothing warns you. `stack:submit` reads that record, treats the PR as
+this stack's own, and pushes the new commits over it. Reusing a name from a stack you
+abandoned is the common way in.
+
 **Ask before starting a stack for a single layer.** If no stack exists and the plan came
 out as one layer, `gh stack init` still creates a branch and a stack, which is not what
 someone asking to commit a typo expects. Say the change looks like one layer and offer a
@@ -118,6 +154,23 @@ plain commit on the current branch instead.
 For each layer in order: stage its paths with `git add <paths>`, commit, then
 `gh stack add <next>`. Regenerate `git diff HEAD` between layers, since line numbers
 shift as commits land. Prefer `git add` over `gh stack add -Am`, which stages everything.
+
+**Splitting one file across layers.** When a file carries changes belonging to different
+layers, do not reach for `git add -p`: it is interactive and will hang. Adjacent edits
+also arrive as a single hunk, so there is often nothing to split by hunk anyway. Write the
+intermediate version of the file instead, and restore the full one afterwards:
+
+```bash
+cp internal/store.go /tmp/store.full.go   # keep the finished version
+# write internal/store.go holding only the lower layer's changes
+git add internal/store.go && git commit -m "..."
+gh stack add <next-layer>
+cp /tmp/store.full.go internal/store.go   # the rest becomes the next layer
+git add internal/store.go && git commit -m "..."
+```
+
+Check with `git diff <lower>..<upper> -- <path>` that the upper layer adds only what you
+meant to defer.
 
 ### 4. Write the messages
 
@@ -187,6 +240,12 @@ only, then retry.
 
 **`gh: unknown command "stack"`.** Install it pinned:
 `gh extension install github/gh-stack --pin v0.1.0`.
+
+**Never rename a stacked branch with `git branch -m`.** There is no `gh stack rename`, and
+the extension does not notice: the old name stays in the stack as a layer with no commits,
+and the renamed branch drops out of the stack entirely. The state lives in `.git/gh-stack`,
+a JSON file keyed by branch name, so recovery means editing that file by hand to rename
+the entry. Get the name right at creation instead.
 
 **A prompt appears and the run hangs.** A command was called without its argument. Every
 `init`, `add`, and `checkout` needs an explicit branch name.

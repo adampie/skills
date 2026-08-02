@@ -36,6 +36,20 @@ Branches without a `pr` are the ones that will be created.
 Note: v0.1.0 does not emit a `head` field per branch, whatever older docs show. Do not
 parse one.
 
+**Confirm each recorded PR is actually this stack's.** For every branch that has a `pr`,
+check its base is the layer below, or `trunk` for the bottom layer:
+
+```bash
+gh pr view <number> --json number,headRefName,baseRefName
+```
+
+Stop and tell the user if a base points somewhere else. A `pr` record can be a stale match
+rather than a PR this stack opened: `gh stack view` binds a layer to any open PR whose head
+branch has the same name, so a layer reusing a name from an abandoned stack inherits that
+stack's PR. Submitting then pushes unrelated commits onto it and retargets its base, which
+step 4 does silently because updating existing PRs is its normal job. Recovering means
+renaming the layer, which `stack:commit` covers, and hand-editing `.git/gh-stack`.
+
 ### 2. Draft the titles and bodies
 
 `gh stack submit` has no title or body flag. It auto-generates from commits, so write the
@@ -91,14 +105,24 @@ For each PR created in step 4, `gh pr edit <number> --title "..." --body-file <t
 Skip PRs that already existed unless the user asked to refresh them. Delete the temp
 files afterwards.
 
-**Preserve the trailing blocks.** The body is not empty when `submit` creates it: it
+**Preserve what is already in the body.** It is not empty when `submit` creates it: it
 carries a `<sub>Stack created with GitHub Stacks CLI</sub>` footer, which is what gives
-readers stack navigation, and possibly review-bot blocks fenced in `<!-- -->`. A plain
-`--body-file` replaces the lot, and a later `submit` or `sync` does **not** put them back.
+readers stack navigation, and review bots may have appended blocks fenced in `<!-- -->`. A
+plain `--body-file` replaces the lot, and a later `submit` or `sync` does **not** put them
+back.
 
-So read the current body first with `gh pr view <number> --json body --jq .body`, then
-write your prose above any trailing `<sub>` footer and `<!-- -->` block rather than over
-them.
+Despite reading as a footer, the `<sub>` block is the **first** line of the body, with any
+bot blocks after it. Do not go looking for it at the end. Read the current body, then
+prepend your prose and a blank line, keeping everything else in the order it was in:
+
+```bash
+gh pr view <number> --json body --jq .body > /tmp/body.old
+{ cat /tmp/body.new; echo; cat /tmp/body.old; } > /tmp/body.final
+gh pr edit <number> --body-file /tmp/body.final
+```
+
+Afterwards, confirm the footer survived: `gh pr view <number> --json body --jq .body |
+grep -c 'Stacks CLI'` should print at least 1.
 
 ### 6. Report
 
@@ -139,7 +163,7 @@ $ gh pr list --json number,baseRefName,headRefName,isDraft
 #3 draft=true  user-handler -> store-get
 ```
 
-Then `gh pr edit` on each, preserving the trailing `<sub>` footer, and report:
+Then `gh pr edit` on each, prepending the prose above the `<sub>` footer, and report:
 
 ```
 #1 https://github.com/owner/repo/pull/1  draft  config

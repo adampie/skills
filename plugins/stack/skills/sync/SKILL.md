@@ -73,16 +73,21 @@ repo that has none. Use `--no-trunk` there.
 Commit messages follow the same rules as `stack:commit`.
 
 Push the rewritten branches with `gh stack push`, or `stack:submit` if any layer still
-needs a PR.
+needs a PR. A finished rebase suggests `gh stack submit` regardless; `push` is the right
+answer when every layer already has one, since it re-pushes without touching PR bodies.
 
 ### 3. Resolve conflicts
 
 `gh stack rebase` and `gh stack sync` exit **3** on a conflict. `sync` restores every
-branch to its pre-rebase state first, so the stack is never left half-rebased.
+branch to its pre-rebase state first, so the stack is never left half-rebased. Trunk is
+the exception: it is fast-forwarded before the rebase starts and stays moved, so the run
+is not a no-op even when every branch is restored.
 
-The tool prints the conflicted files and the recipe; follow it rather than restating it.
-In short: read the files, resolve the `<<<<<<<` markers, `git add` each, then
-`gh stack rebase --continue`. Repeat if another layer conflicts.
+The two commands report differently. `sync` names no files; it only tells you to run
+`gh stack rebase`. Do that, and `rebase` prints the conflicted files and the recipe, which
+you should follow rather than restate. In short: read the files, resolve the `<<<<<<<`
+markers, `git add` each, then `gh stack rebase --continue`. Repeat if another layer
+conflicts. Expect a detached HEAD until the rebase finishes.
 
 If the resolution is not obvious, `gh stack rebase --abort` restores everything. Say what
 conflicted and stop rather than guessing at someone's intent.
