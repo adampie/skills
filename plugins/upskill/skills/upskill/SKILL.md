@@ -52,12 +52,13 @@ decides whether the skill is ever used.
 python3 scripts/scaffold.py --plugin PLUGIN --skill SKILL --description "..."
 ```
 
-The script finds the repository root, validates the names, writes the plugin
-manifest and a SKILL.md skeleton, and registers the plugin in
-`marketplace.json`. It refuses to overwrite an existing skill.
+Paths are relative to this skill's directory. The script validates the names
+first, then writes the plugin manifest and a SKILL.md skeleton and registers
+the plugin in `marketplace.json`. It refuses to overwrite an existing skill.
 
-Run it from anywhere inside the target repository. It works unchanged in any
-repo laid out this way, so it serves both the public and private marketplaces.
+The target repository is the first one with a `.claude-plugin/marketplace.json`
+at or above `--repo`, which defaults to the current directory. That is how the
+same script serves both the public and private marketplaces.
 
 ## Step 3: write the instructions
 
@@ -84,9 +85,9 @@ mise run validate-manifests  # manifests against the published JSON Schemas
 mise run validate            # claude plugin validate
 ```
 
-All three must pass before the skill is committed, and they do not overlap.
-`claude plugin validate` never opens SKILL.md and applies its own rules rather
-than the schemas, so the other two exist to cover what it does not.
+All three must pass before the skill is committed. `claude plugin validate`
+never opens SKILL.md, and it walks only the plugins the marketplace already
+lists, so the other two cover what it does not see.
 
 To check one skill directly, without mise:
 
@@ -129,7 +130,7 @@ When a new model makes advice here wrong, `craft.md` and `testing.md` are
 where the damage is. Rewrite those; leave `spec.md` alone unless the published
 specification itself changed.
 
-## Scripts
+## Bundled files
 
 | File | Purpose |
 | --- | --- |
@@ -141,7 +142,7 @@ specification itself changed.
 
 The skill rules live in one module so that creation and validation cannot
 disagree. Changing a limit or a naming rule means editing `skillspec.py` and
-`spec.md` together, and nothing else.
+`spec.md` together.
 
 Manifests must declare `$schema` so editors validate them while they are being
 written. `scaffold.py` emits it, and `validate_manifests.py` warns when it is

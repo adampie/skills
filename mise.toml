@@ -30,9 +30,9 @@ uv run plugins/upskill/skills/upskill/scripts/validate_skill.py $skills
 
 [tasks.validate-manifests]
 description = "Validate the manifests against the published JSON Schemas"
-# claude plugin validate applies its own rules rather than the schemas editors
-# use, so a manifest can pass it and still be rejected by the schema. This also
-# catches a plugin directory that was never registered.
+# Checks the schemas editors use, and adds the cross-file rules no schema can
+# express. claude plugin validate walks only the plugins the marketplace lists,
+# so a plugin directory that was never registered is invisible to it.
 run = "uv run plugins/upskill/skills/upskill/scripts/validate_manifests.py ."
 
 [tasks.zizmor]

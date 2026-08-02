@@ -5,9 +5,11 @@
 # ///
 """Validate marketplace and plugin manifests against the published schemas.
 
-`claude plugin validate` applies its own rules, which are not the schemas
-editors use, so a manifest can satisfy one and not the other. This checks the
-JSON Schemas from schemastore.org directly.
+Checks the JSON Schemas from schemastore.org, the ones editors use, and the
+cross-file rules no schema can express: registered sources exist, names match
+their directories and marketplace entries, and no plugin directory is left
+unregistered. `claude plugin validate` walks only the plugins the marketplace
+lists, so an unregistered directory is invisible to it.
 
 The schemas are vendored under assets/schemas/ rather than fetched, because
 the schemastore URLs are unversioned and would make each run depend on

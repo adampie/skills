@@ -6,8 +6,8 @@ trust the trial run and correct this file.
 
 ## The description field
 
-The single highest-leverage part of a skill. It is all the model sees when
-deciding whether to load anything else, so a good body behind a vague
+The single highest-leverage part of a skill. With `name`, it is all the model
+sees when deciding whether to load anything else, so a good body behind a vague
 description is wasted work.
 
 Cover three things: what it does, when to use it, and the phrases a user would

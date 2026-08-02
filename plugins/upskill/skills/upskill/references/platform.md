@@ -13,27 +13,28 @@ are not affected.
 
 ## Frontmatter restrictions
 
-- **No angle brackets** (`<` or `>`) anywhere in frontmatter. Frontmatter is
-  injected into the system prompt, so markup there is an injection vector.
-  This is an upload-time restriction, not a format rule, but honouring it costs
-  nothing and keeps skills portable to Claude.ai.
-- **Reserved names.** Skills named with `claude` or `anthropic` are refused.
+- **No XML tags in `name` or `description`.** Frontmatter is injected into the
+  system prompt, so markup there is an injection vector. `validate_skill.py`
+  goes further and rejects any `<` or `>` anywhere in frontmatter: a superset
+  of the documented rule that needs no tag parser and costs nothing to honour.
+- **Reserved names.** `name` may not contain `claude` or `anthropic`.
 
 ## Repository conventions
 
 - `SKILL.md` must be spelled exactly that way, uppercase and all. `skill.md`
   and `SKILL.MD` are not recognised.
-- No `README.md` inside a skill directory. The specification permits it, but
-  Anthropic's tooling expects documentation to live in `SKILL.md` or
-  `references/`. A repository-level README for human readers is expected and
-  separate.
+- No `README.md` inside a skill directory. The specification permits any extra
+  files, but a second document competes with `SKILL.md` for the reader and
+  neither is loaded by name. Documentation goes in `SKILL.md` or `references/`.
+  The repository-level README for human readers is separate.
 
 ## Scale
 
-Response quality degrades somewhere past roughly 20 to 50 skills enabled at
-once, because every installed skill's metadata sits in the system prompt. If a
-marketplace grows past that, group related skills into plugins users can enable
-selectively rather than shipping many independent ones.
+Every enabled skill's metadata sits in the system prompt for the whole
+conversation, and the model chooses between skills on `description` alone.
+Anthropic's guidance assumes selection across 100+ skills, so the binding
+constraint is descriptions that distinguish themselves rather than a count.
+Group related skills into plugins users can enable selectively.
 
 ## Distribution
 

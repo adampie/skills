@@ -44,14 +44,16 @@ mise run zizmor              # audit the GitHub Actions workflows
 
 The three validate tasks check different things:
 
-- `validate` runs `claude plugin validate`, which applies its own rules and
-  never opens `SKILL.md`.
+- `validate` runs `claude plugin validate`, which reads the manifests and never
+  opens `SKILL.md`.
 - `validate-manifests` checks the manifests against the
   [marketplace](https://www.schemastore.org/claude-code-marketplace.json) and
   [plugin](https://www.schemastore.org/claude-code-plugin-manifest.json)
-  JSON Schemas, which are what editors use and are not the same rules. It also
-  catches a plugin directory that was never registered, which nothing else
-  looks for.
+  JSON Schemas, the ones editors use, and adds the cross-file rules no schema
+  can express: registered sources exist, names match their directories, and no
+  plugin directory is left unregistered. `claude plugin validate` walks only
+  the plugins the marketplace lists, so an unregistered directory is invisible
+  to it.
 - `validate-skills` checks each skill against the Agent Skills format rules.
 
 The last two run the checkers bundled with the `upskill` skill. Skill rules are
@@ -60,10 +62,9 @@ creation. The schemas are vendored under the skill's `assets/schemas/` because
 the schemastore URLs are unversioned; refresh them with the commands in
 `scripts/validate_manifests.py`.
 
-CI runs the same tasks, so a green local run means a green build. Both
-validate tasks run on every push and pull request; `zizmor` runs only when a
-workflow or `mise.toml` changes. `validate` fails on an empty marketplace, so
-the first plugin has to be merged past it.
+CI runs the same tasks, so a green local run means a green build. All three
+validate tasks run on pull requests and pushes to `main`; `zizmor` runs only
+when a workflow or `mise.toml` changes.
 
 ## Licence
 
