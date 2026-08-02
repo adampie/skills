@@ -28,6 +28,23 @@ Check all of these before touching anything. Report the reason and stop.
 The rebase markers matter because splitting hunks part-way through a rebase writes
 commits onto a detached intermediate state that the rebase then discards.
 
+**Check the identity before committing, and never set it.** Compare `git config
+user.email` against the authors of recent history:
+
+```bash
+git config user.email
+git log -20 --format='%ae' | sort | uniq -c | sort -rn | head -3
+```
+
+If the configured address does not appear in that list, say so and ask before
+committing. GitHub attributes a commit by email, so an unrecognised one produces commits
+that show "No user is associated with the committer email" and never link to the author's
+profile. Fixing that after the fact means rewriting history and force-pushing.
+
+Use whatever git is already configured to use. Do not run `git config user.email`, and do
+not take an address from conversation context; a fresh `git init` inherits the global
+config, which is nearly always the right answer.
+
 ## Never commit secrets
 
 A secret in git history is leaked even after a revert or force-push, because the blob
