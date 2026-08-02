@@ -102,6 +102,15 @@ For each PR created in step 4, `gh pr edit <number> --title "..." --body-file <t
 Skip PRs that already existed unless the user asked to refresh them. Delete the temp
 files afterwards.
 
+**Preserve the trailing blocks.** The body is not empty when `submit` creates it: it
+carries a `<sub>Stack created with GitHub Stacks CLI</sub>` footer, which is what gives
+readers stack navigation, and possibly review-bot blocks fenced in `<!-- -->`. A plain
+`--body-file` replaces the lot, and a later `submit` or `sync` does **not** put them back.
+
+So read the current body first with `gh pr view <number> --json body --jq .body`, then
+write your prose above any trailing `<sub>` footer and `<!-- -->` block rather than over
+them.
+
 ### 6. Report
 
 One line per PR, bottom to top, with number, URL, and state. If drafts, add how to flip
