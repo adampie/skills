@@ -1,6 +1,6 @@
 ---
 name: submit
-description: "Push a stack of branches and create or update their pull requests on GitHub, using gh stack submit. Use when the user says submit the stack, open the PRs, raise these for review, push this up, put these up as PRs, or mark them ready. Falls back to plain chained pull requests when the repository does not have stacked PRs enabled. Does not commit, which stack:commit does, and never merges."
+description: "Push a stack of branches and create or update their pull requests on GitHub, using gh stack submit. Use when the user says submit the stack, open the PRs, raise these for review, push this up, put these up as PRs, or mark them ready. Opens one draft pull request per layer, each based on the layer below. Does not commit, which stack:commit does, and never merges."
 compatibility: Requires gh 2.0+ and the github/gh-stack extension
 metadata:
   author: adampie
@@ -82,19 +82,8 @@ gh stack submit --auto          # add --open only when the user asked for ready
 `--auto` is required. Without it the command prompts for a title per PR and hangs. Add
 `--remote <name>` if the repo has several remotes.
 
-**If it exits 9, stacked PRs are not enabled on the repository.** Fall back to plain
-chained PRs, which give the same layered review without the GitHub stack object:
-
-```bash
-gh stack push                            # branches only, no PRs
-# then bottom to top, basing each PR on the layer below:
-gh pr create --base main       --head auth       --draft --title "..." --body-file f1
-gh pr create --base auth       --head api-routes --draft --title "..." --body-file f2
-gh pr create --base api-routes --head ui         --draft --title "..." --body-file f3
-```
-
-Say plainly that you fell back and why. Bases still chain, so reviewers still see one
-layer per PR.
+Stacked PRs are in public preview, so treat availability as given. Expect exit 0 and one
+PR per unmerged layer, with each base pointing at the layer below.
 
 ### 5. Apply the real titles and bodies
 
@@ -130,8 +119,9 @@ User: "put these up as PRs."
 
 ## Failure modes
 
-**Exit 9, stacked PRs unavailable.** Use the chained-PR fallback in step 4. Do not
-collapse the layers into one PR; that discards the work `stack:commit` did.
+**Exit 9, stacked PRs unavailable.** Rare, since the feature is in public preview. Report
+it and stop. Do not collapse the layers into one PR; that discards the work
+`stack:commit` did.
 
 **Exit 4, GitHub API failure.** Check `gh auth status` and retry once. Do not rewrite the
 command.
