@@ -28,6 +28,13 @@ fi
 uv run plugins/upskill/skills/upskill/scripts/validate_skill.py $skills
 """
 
+[tasks.validate-manifests]
+description = "Validate the manifests against the published JSON Schemas"
+# claude plugin validate applies its own rules rather than the schemas editors
+# use, so a manifest can pass it and still be rejected by the schema. This also
+# catches a plugin directory that was never registered.
+run = "uv run plugins/upskill/skills/upskill/scripts/validate_manifests.py ."
+
 [tasks.zizmor]
 description = "Audit the GitHub Actions workflows for security issues"
 run = "zizmor .github/workflows/"

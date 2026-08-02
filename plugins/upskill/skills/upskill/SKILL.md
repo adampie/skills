@@ -79,13 +79,14 @@ Constraints worth respecting, in full in `references/spec.md`:
 ## Step 4: validate
 
 ```bash
-mise run validate-skills   # every SKILL.md against the format rules
-mise run validate          # marketplace and plugin manifests
+mise run validate-skills     # every SKILL.md against the format rules
+mise run validate-manifests  # manifests against the published JSON Schemas
+mise run validate            # claude plugin validate
 ```
 
-Both must pass before the skill is committed. They check different things:
-`claude plugin validate` does not read SKILL.md at all, which is why the
-format check exists separately.
+All three must pass before the skill is committed, and they do not overlap.
+`claude plugin validate` never opens SKILL.md and applies its own rules rather
+than the schemas, so the other two exist to cover what it does not.
 
 To check one skill directly, without mise:
 
@@ -134,8 +135,14 @@ specification itself changed.
 | --- | --- |
 | `scripts/scaffold.py` | Creates the plugin and skill, registers the plugin |
 | `scripts/validate_skill.py` | Checks skill directories against the format rules |
-| `scripts/skillspec.py` | The rules themselves, shared by both of the above |
+| `scripts/validate_manifests.py` | Checks manifests against the published JSON Schemas |
+| `scripts/skillspec.py` | The skill rules, shared by the scaffolder and validator |
+| `assets/schemas/` | Vendored copies of the two manifest schemas |
 
-The rules live in one module so that creation and validation cannot disagree.
-Changing a limit or a naming rule means editing `skillspec.py` and `spec.md`
-together, and nothing else.
+The skill rules live in one module so that creation and validation cannot
+disagree. Changing a limit or a naming rule means editing `skillspec.py` and
+`spec.md` together, and nothing else.
+
+Manifests must declare `$schema` so editors validate them while they are being
+written. `scaffold.py` emits it, and `validate_manifests.py` warns when it is
+missing or wrong.

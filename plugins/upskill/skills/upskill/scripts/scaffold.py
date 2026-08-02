@@ -168,6 +168,7 @@ def main() -> None:
 
     print("\nnext: write the body, then run")
     print("  mise run validate-skills")
+    print("  mise run validate-manifests")
     print("  mise run validate")
 
 
