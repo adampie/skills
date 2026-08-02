@@ -60,9 +60,20 @@ For each layer, read `git log <base>..<branch>` and its diff, then write:
 - **Title:** imperative, stands alone in a merged history, under ~70 characters. One
   prefix at most, and only if the repo already uses one (`INF-318:`, `feat(api):`). Take
   a ticket ID from the branch name or commits if there is one.
-- **Body:** why first, in a sentence or two, then a short what. British English, no
-  em-dashes, no hype, no restating the diff file by file. Backticks only for exact
-  commands or ambiguous paths.
+- **Body:** why first, in one or two sentences, then what changed as one-line bullets.
+  British English, no em-dashes, no hype. Backticks only for exact commands or ambiguous
+  paths.
+- **Aim for 100 words and stop at 200.** A reviewer should take it in without scrolling.
+  Past that, reviewers skim and the detail is wasted anyway.
+- **Cut anything the diff already says.** No file-by-file walkthrough, no narrating a
+  rename, no "added a test" beside a visible test file.
+- **Delete any sentence that would be true of a different PR.** "Improves reliability"
+  and "follows best practice" pass no such test. Neither does a sentence explaining why
+  the change matters in general terms.
+- **No headings under 200 words.** On a short body they are decoration. Three or more
+  genuine sections earn them.
+- **Link rather than retell.** Point at the commit, issue, or run. Detail belongs in
+  commit messages, and repeating it in the body means two copies to keep in step.
 - **Limitations,** one line, when a reader would otherwise be surprised. Honest beats
   complete.
 - **Proof,** one line, only if there was a real run. Never pad with "it compiles" or
