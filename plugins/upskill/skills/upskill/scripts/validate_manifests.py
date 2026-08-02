@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["jsonschema==4.25.1"]
+# dependencies = ["jsonschema==4.25.1", "rfc3986-validator==0.1.1"]
 # ///
 """Validate marketplace and plugin manifests against the published schemas.
 
@@ -13,7 +13,7 @@ lists, so an unregistered directory is invisible to it.
 
 The schemas are vendored under assets/schemas/ rather than fetched, because
 the schemastore URLs are unversioned and would make each run depend on
-whatever is published that day. Refresh them with:
+whatever is published that day. Refresh them by running, from the skill root:
 
     curl -sSo assets/schemas/claude-code-marketplace.json \\
         https://www.schemastore.org/claude-code-marketplace.json
@@ -30,7 +30,7 @@ import json
 import sys
 from pathlib import Path
 
-from jsonschema import Draft7Validator
+from jsonschema import Draft7Validator, FormatChecker
 
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "assets" / "schemas"
 MARKETPLACE_SCHEMA = SCHEMA_DIR / "claude-code-marketplace.json"
@@ -40,6 +40,12 @@ PLUGIN_SCHEMA = SCHEMA_DIR / "claude-code-plugin-manifest.json"
 # as they are written.
 MARKETPLACE_SCHEMA_URL = "https://www.schemastore.org/claude-code-marketplace.json"
 PLUGIN_SCHEMA_URL = "https://www.schemastore.org/claude-code-plugin-manifest.json"
+
+# Both schemas constrain URLs with `format: uri`, which jsonschema treats as an
+# annotation unless a checker is supplied, and whose checker in turn only
+# registers when rfc3986-validator is installed. Hence the second dependency:
+# without it this asserts nothing and the format rules are silently skipped.
+FORMAT_CHECKER = FormatChecker()
 
 
 def find_repo_root(start: Path) -> Path | None:
@@ -57,7 +63,7 @@ def load_json(path: Path) -> tuple[dict | None, list[str]]:
 
 
 def schema_errors(instance: dict, schema: dict) -> list[str]:
-    validator = Draft7Validator(schema)
+    validator = Draft7Validator(schema, format_checker=FORMAT_CHECKER)
     errors = []
     for error in sorted(validator.iter_errors(instance), key=lambda e: list(e.path)):
         location = ".".join(str(part) for part in error.path) or "(root)"
@@ -73,6 +79,13 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
     marketplace, load_errors = load_json(marketplace_path)
     if load_errors:
         return [f".claude-plugin/marketplace.json: {e}" for e in load_errors], []
+    if not isinstance(marketplace, dict):
+        # Valid JSON that is not an object parses fine and then breaks every
+        # lookup below, so stop here rather than raising out of the validator.
+        return [
+            f".claude-plugin/marketplace.json: root must be an object, got "
+            f"{type(marketplace).__name__}"
+        ], []
 
     marketplace_schema = json.loads(MARKETPLACE_SCHEMA.read_text())
     for error in schema_errors(marketplace, marketplace_schema):
@@ -84,29 +97,63 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
             f"{MARKETPLACE_SCHEMA_URL}"
         )
 
-    plugin_schema = json.loads(PLUGIN_SCHEMA.read_text())
-    registered = {}
-    for entry in marketplace.get("plugins", []):
-        name, source = entry.get("name"), entry.get("source")
-        if not isinstance(name, str) or not isinstance(source, str):
-            # Already reported by the schema check; nothing further to verify.
-            continue
-        registered[name] = source
+    # Sources resolve against the marketplace root unless metadata.pluginRoot
+    # moves the base.
+    metadata = marketplace.get("metadata")
+    plugin_root = metadata.get("pluginRoot") if isinstance(metadata, dict) else None
+    base = (repo / plugin_root).resolve() if isinstance(plugin_root, str) else repo
 
-        plugin_dir = (repo / source).resolve()
+    plugin_schema = json.loads(PLUGIN_SCHEMA.read_text())
+    seen: set[str] = set()
+    registered_dirs: set[Path] = set()
+    for entry in marketplace.get("plugins") or []:
+        if not isinstance(entry, dict):
+            continue  # Already reported by the schema check.
+        name, source = entry.get("name"), entry.get("source")
+        if not isinstance(name, str):
+            continue
+        if name in seen:
+            errors.append(f"marketplace entry {name!r} is registered more than once")
+            continue
+        seen.add(name)
+        if not isinstance(source, str):
+            # An npm or git source has no directory in this repository.
+            continue
+
+        plugin_dir = (base / source).resolve()
+        if not plugin_dir.is_relative_to(repo):
+            errors.append(
+                f"marketplace entry {name!r}: source {source} resolves outside "
+                "the repository"
+            )
+            continue
+        registered_dirs.add(plugin_dir)
         if not plugin_dir.is_dir():
             errors.append(f"marketplace entry {name!r}: source {source} does not exist")
             continue
+        if plugin_dir.name != name:
+            errors.append(
+                f"marketplace entry {name!r}: directory {plugin_dir.name!r} does "
+                "not match"
+            )
 
         manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
         if not manifest_path.is_file():
-            errors.append(f"{source}: no .claude-plugin/plugin.json")
+            # strict: false means the marketplace entry carries the manifest,
+            # which the marketplace schema has already checked.
+            if entry.get("strict", True):
+                errors.append(f"{source}: no .claude-plugin/plugin.json")
             continue
 
         rel = manifest_path.relative_to(repo)
         manifest, load_errors = load_json(manifest_path)
         if load_errors:
             errors.extend(f"{rel}: {e}" for e in load_errors)
+            continue
+        if not isinstance(manifest, dict):
+            errors.append(
+                f"{rel}: root must be an object, got {type(manifest).__name__}"
+            )
             continue
 
         for error in schema_errors(manifest, plugin_schema):
@@ -121,19 +168,19 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
                 f"{rel}: name {manifest.get('name')!r} does not match marketplace "
                 f"entry {name!r}"
             )
-        if plugin_dir.name != name:
-            errors.append(f"{rel}: directory {plugin_dir.name!r} does not match name {name!r}")
         if "version" not in manifest:
             warnings.append(f"{rel}: no version, so the plugin cannot be tagged")
 
-    plugins_dir = repo / "plugins"
-    if plugins_dir.is_dir():
-        for child in sorted(plugins_dir.iterdir()):
+    # Compare directories rather than names, so a marketplace that moves its
+    # base or sources a plugin remotely is judged on what it actually points at.
+    scan_dir = base if base != repo else repo / "plugins"
+    if scan_dir.is_dir():
+        for child in sorted(scan_dir.iterdir()):
             if not child.is_dir() or child.name.startswith("."):
                 continue
-            if child.name not in registered:
+            if child.resolve() not in registered_dirs:
                 errors.append(
-                    f"plugins/{child.name} is not registered in marketplace.json"
+                    f"{child.relative_to(repo)} is not registered in marketplace.json"
                 )
 
     return errors, warnings

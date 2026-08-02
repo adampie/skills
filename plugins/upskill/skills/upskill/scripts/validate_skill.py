@@ -39,9 +39,17 @@ KNOWN_FIELDS = {
 
 def split_frontmatter(text: str) -> tuple[str | None, str, list[str]]:
     """Return (frontmatter, body, errors)."""
+    text = text.replace("\r\n", "\n")
     if not text.startswith("---\n"):
         return None, "", ["SKILL.md must begin with a --- frontmatter delimiter"]
     rest = text[4:]
+    # A delimiter immediately after the opening one is empty frontmatter, not a
+    # missing close. Report it as the empty mapping it is, so the required-field
+    # errors below say what is actually wrong.
+    if rest.startswith("---\n"):
+        return "", rest[4:], []
+    if rest.rstrip("\n") == "---":
+        return "", "", []
     end = rest.find("\n---\n")
     if end == -1:
         if rest.endswith("\n---"):
@@ -60,25 +68,36 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
 
     skill_file = path / "SKILL.md"
     if not skill_file.is_file():
-        # Catches skill.md and SKILL.MD on case-insensitive filesystems.
+        # On a case-sensitive filesystem skill.md is simply a different file.
         actual = [p.name for p in path.iterdir() if p.name.lower() == "skill.md"]
         if actual:
             return [f"file must be named exactly SKILL.md, found {actual[0]}"], []
         return ["no SKILL.md found"], []
+    # On a case-insensitive filesystem the open above succeeded for skill.md or
+    # SKILL.MD, so compare against the name the directory really holds. Removing
+    # this check would leave macOS with no case check at all.
     if skill_file.name not in {p.name for p in path.iterdir()}:
         errors.append("file must be named exactly SKILL.md")
 
-    front, body, split_errors = split_frontmatter(skill_file.read_text())
+    if (path / "README.md").is_file():
+        warnings.append(
+            "README.md in a skill directory; documentation belongs in SKILL.md "
+            "or references/ (Claude)"
+        )
+
+    # Explicit encoding: the locale default would fail on a non-ASCII skill
+    # under a non-UTF-8 locale.
+    front, body, split_errors = split_frontmatter(skill_file.read_text(encoding="utf-8"))
     if split_errors:
-        return split_errors, []
+        return split_errors, warnings
 
     try:
         data = yaml.safe_load(front)
     except yaml.YAMLError as exc:
-        return [f"invalid YAML in frontmatter: {exc}"], []
+        return [f"invalid YAML in frontmatter: {exc}"], warnings
 
     if not isinstance(data, dict):
-        return ["frontmatter must be a YAML mapping"], []
+        return ["frontmatter must be a YAML mapping"], warnings
 
     name = data.get("name")
     if not isinstance(name, str) or not name:
@@ -95,8 +114,10 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
     else:
         errors.extend(check_description(data["description"]))
 
-    compatibility = data.get("compatibility")
-    if compatibility is not None:
+    # Presence, not truthiness: `compatibility:` with no value parses as None,
+    # which is a field supplied empty rather than a field left out.
+    if "compatibility" in data:
+        compatibility = data["compatibility"]
         if not isinstance(compatibility, str) or not compatibility.strip():
             errors.append("field 'compatibility' must be a non-empty string")
         elif len(compatibility) > COMPATIBILITY_MAX:
@@ -105,12 +126,14 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
                 f"characters, got {len(compatibility)}"
             )
 
-    metadata = data.get("metadata")
-    if metadata is not None:
+    if "metadata" in data:
+        metadata = data["metadata"]
         if not isinstance(metadata, dict):
             errors.append("field 'metadata' must be a mapping")
         else:
             for key, value in metadata.items():
+                if not isinstance(key, str):
+                    errors.append(f"metadata key {key!r} must be a string; quote it")
                 if not isinstance(value, str):
                     errors.append(
                         f"metadata.{key} must be a string, got "

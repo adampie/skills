@@ -14,8 +14,9 @@ from __future__ import annotations
 import re
 
 # Lowercase alphanumerics with single interior hyphens. Rejects leading,
-# trailing, and consecutive hyphens by construction.
-NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+# trailing, and consecutive hyphens by construction. \Z rather than $, which
+# would also match before a trailing newline.
+NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*\Z")
 NAME_MAX = 64
 DESCRIPTION_MAX = 1024
 COMPATIBILITY_MAX = 500

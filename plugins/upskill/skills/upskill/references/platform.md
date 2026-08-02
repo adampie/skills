@@ -21,12 +21,11 @@ are not affected.
 
 ## Repository conventions
 
-- `SKILL.md` must be spelled exactly that way, uppercase and all. `skill.md`
-  and `SKILL.MD` are not recognised.
 - No `README.md` inside a skill directory. The specification permits any extra
-  files, but a second document competes with `SKILL.md` for the reader and
-  neither is loaded by name. Documentation goes in `SKILL.md` or `references/`.
-  The repository-level README for human readers is separate.
+  files, but `SKILL.md` is the only entrypoint, so a README is read by nobody
+  unless something links to it. Documentation goes in `SKILL.md` or
+  `references/`; `validate_skill.py` warns when it finds one. The
+  repository-level README for human readers is separate.
 
 ## Scale
 

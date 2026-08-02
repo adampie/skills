@@ -49,16 +49,20 @@ decides whether the skill is ever used.
 ## Step 2: scaffold
 
 ```bash
-python3 scripts/scaffold.py --plugin PLUGIN --skill SKILL --description "..."
+python3 SKILL_DIR/scripts/scaffold.py --repo TARGET_REPO \
+  --plugin PLUGIN --skill SKILL --description "..."
 ```
 
-Paths are relative to this skill's directory. The script validates the names
-first, then writes the plugin manifest and a SKILL.md skeleton and registers
-the plugin in `marketplace.json`. It refuses to overwrite an existing skill.
+`SKILL_DIR` is this skill's own directory, which is where the bundled scripts
+are; a bare `scripts/scaffold.py` only resolves if that is also the working
+directory. `--repo` is any path inside the target repository, defaulting to the
+current directory, and the repository is the first one with a
+`.claude-plugin/marketplace.json` at or above it. That is how the same script
+serves both the public and private marketplaces.
 
-The target repository is the first one with a `.claude-plugin/marketplace.json`
-at or above `--repo`, which defaults to the current directory. That is how the
-same script serves both the public and private marketplaces.
+The script validates the names first, then writes the plugin manifest and a
+SKILL.md skeleton and registers the plugin in `marketplace.json`. It refuses to
+overwrite an existing skill, and refuses before writing anything.
 
 ## Step 3: write the instructions
 
@@ -72,12 +76,24 @@ Replace the skeleton body. Structure that holds up:
 Constraints worth respecting, in full in `references/spec.md`:
 
 - Keep `SKILL.md` under 500 lines and roughly 5000 tokens. It loads in full.
+  The validator warns past 500 lines and does not count tokens; both are your
+  judgement to apply.
 - Move detail into `references/`, which loads only when needed.
 - Keep references one level deep. Avoid chains of files pointing at files.
 - Prefer a script over prose for anything that must happen exactly right. Code
   is deterministic; instructions are interpreted.
 
 ## Step 4: validate
+
+Run the checkers directly, which works in any target repository:
+
+```bash
+uv run SKILL_DIR/scripts/validate_skill.py TARGET_REPO/plugins/PLUGIN/skills/SKILL
+uv run SKILL_DIR/scripts/validate_manifests.py TARGET_REPO
+claude plugin validate TARGET_REPO --strict
+```
+
+In a repository that defines the tasks, as this one does, the same three are:
 
 ```bash
 mise run validate-skills     # every SKILL.md against the format rules
@@ -88,12 +104,6 @@ mise run validate            # claude plugin validate
 All three must pass before the skill is committed. `claude plugin validate`
 never opens SKILL.md, and it walks only the plugins the marketplace already
 lists, so the other two cover what it does not see.
-
-To check one skill directly, without mise:
-
-```bash
-uv run scripts/validate_skill.py path/to/skill
-```
 
 ## Step 5: test
 
@@ -144,6 +154,6 @@ The skill rules live in one module so that creation and validation cannot
 disagree. Changing a limit or a naming rule means editing `skillspec.py` and
 `spec.md` together.
 
-Manifests must declare `$schema` so editors validate them while they are being
-written. `scaffold.py` emits it, and `validate_manifests.py` warns when it is
-missing or wrong.
+Manifests should declare `$schema` so editors validate them while they are
+being written. `scaffold.py` emits it, and `validate_manifests.py` warns when
+it is missing or wrong.

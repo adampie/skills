@@ -84,13 +84,14 @@ def yaml_string(value: str) -> str:
     return json.dumps(value)
 
 
-def ensure_plugin(repo: Path, plugin: str, marketplace: dict) -> Path:
-    plugin_dir = repo / "plugins" / plugin
+def ensure_plugin(repo: Path, plugin_dir: Path, plugin: str, marketplace: dict) -> bool:
+    """Write the plugin manifest if it is missing. Returns True if it wrote one."""
     manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
     if manifest_path.exists():
-        return plugin_dir
+        return False
 
-    owner = marketplace.get("owner", {})
+    owner = marketplace.get("owner")
+    owner = owner if isinstance(owner, dict) else {}
     manifest = {
         "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
         "name": plugin,
@@ -106,15 +107,26 @@ def ensure_plugin(repo: Path, plugin: str, marketplace: dict) -> Path:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     write_json(manifest_path, manifest)
     print(f"created {manifest_path.relative_to(repo)}")
-    return plugin_dir
+    return True
+
+
+def marketplace_entry(marketplace: dict, plugin: str) -> dict | None:
+    return next(
+        (
+            entry
+            for entry in marketplace.get("plugins") or []
+            if isinstance(entry, dict) and entry.get("name") == plugin
+        ),
+        None,
+    )
 
 
 def register_plugin(repo: Path, plugin: str, marketplace: dict, path: Path) -> None:
     plugins = marketplace.setdefault("plugins", [])
-    if any(entry.get("name") == plugin for entry in plugins):
+    if marketplace_entry(marketplace, plugin) is not None:
         return
     plugins.append({"name": plugin, "source": f"./plugins/{plugin}"})
-    plugins.sort(key=lambda entry: entry.get("name", ""))
+    plugins.sort(key=lambda entry: entry.get("name", "") if isinstance(entry, dict) else "")
     write_json(path, marketplace)
     print(f"registered {plugin} in {path.relative_to(repo)}")
 
@@ -148,11 +160,23 @@ def main() -> None:
     marketplace_path = repo / ".claude-plugin" / "marketplace.json"
     marketplace = read_json(marketplace_path)
 
-    plugin_dir = ensure_plugin(repo, args.plugin, marketplace)
+    # Everything that can refuse the run happens before the first write, so a
+    # refusal leaves the repository untouched.
+    plugin_dir = repo / "plugins" / args.plugin
     skill_dir = plugin_dir / "skills" / args.skill
     if skill_dir.exists():
         fail(f"{skill_dir.relative_to(repo)} already exists; refusing to overwrite")
+    entry = marketplace_entry(marketplace, args.plugin)
+    source = f"./plugins/{args.plugin}"
+    if entry is not None and entry.get("source") != source:
+        # Writing the skill under plugins/ would leave it unreachable, since
+        # the marketplace fetches this plugin from somewhere else.
+        fail(
+            f"{args.plugin} is registered with source {entry.get('source')!r}, "
+            f"not {source!r}"
+        )
 
+    created_plugin = ensure_plugin(repo, plugin_dir, args.plugin, marketplace)
     skill_dir.mkdir(parents=True)
     title = args.skill.replace("-", " ").capitalize()
     frontmatter = (
@@ -166,7 +190,12 @@ def main() -> None:
 
     register_plugin(repo, args.plugin, marketplace, marketplace_path)
 
-    print("\nnext: write the body, then run")
+    if created_plugin:
+        rel = (plugin_dir / ".claude-plugin" / "plugin.json").relative_to(repo)
+        print(f"\nnext: replace the TODO description in {rel}")
+        print("then write the body, then run")
+    else:
+        print("\nnext: write the body, then run")
     print("  mise run validate-skills")
     print("  mise run validate-manifests")
     print("  mise run validate")

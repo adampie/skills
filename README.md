@@ -60,11 +60,12 @@ The last two run the checkers bundled with the `upskill` skill. Skill rules are
 shared with the scaffolder, so a generated skill cannot fail validation on
 creation. The schemas are vendored under the skill's `assets/schemas/` because
 the schemastore URLs are unversioned; refresh them with the commands in
-`scripts/validate_manifests.py`.
+`plugins/upskill/skills/upskill/scripts/validate_manifests.py`, run from that
+script's skill directory.
 
-CI runs the same tasks, so a green local run means a green build. All three
-validate tasks run on pull requests and pushes to `main`; `zizmor` runs only
-when a workflow or `mise.toml` changes.
+CI runs these same tasks. All three validate tasks run on pull requests and
+pushes to `main`; `zizmor` runs only when a workflow or `mise.toml` changes,
+and in CI it gets a token, so it can run online audits a local run skips.
 
 ## Licence
 

@@ -18,10 +18,10 @@ say.
 description: Analyses Figma design files and generates developer handoff
   documentation. Use when the user uploads .fig files or asks for design specs,
   component documentation, or design-to-code handoff.
-
+---
 # Bad: no trigger, no scope
 description: Helps with projects.
-
+---
 # Bad: describes the implementation rather than the user's request
 description: Implements the Project entity model with hierarchical
   relationships.
@@ -41,12 +41,13 @@ alternative:
 
 ```yaml
 description: Advanced statistical analysis of CSV files, including regression
-  and clustering. Do not use for simple data exploration or charting.
+  and clustering. Do not use for simple data exploration or charting, which the
+  csv-summary skill covers.
 ```
 
 **To see what the model thinks the skill is for,** ask it: "when would you use
-the NAME skill?" It answers from the description alone, so whatever it fails
-to mention is what the description fails to say.
+the NAME skill?" It answers from the name and description, so whatever it fails
+to mention is what they fail to say.
 
 ## Instructions
 

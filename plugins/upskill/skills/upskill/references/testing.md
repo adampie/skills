@@ -39,6 +39,7 @@ When:   the skill runs end to end
 Then:   plugins/publishing/skills/release-notes/SKILL.md exists
         the plugin is registered in marketplace.json
         mise run validate-skills passes
+        mise run validate-manifests passes
         mise run validate passes
 ```
 
@@ -60,8 +61,9 @@ your failure modes.
 ## Iterating
 
 Skills are maintained, not finished. When one misbehaves in real use, bring
-the transcript back rather than guessing at a fix, and add the case to the
-triggering set so the same regression is caught next time.
+the transcript back rather than guessing at a fix, and add the case to whichever
+set the failure belongs to: triggering if the skill loaded when it should not
+have, or not at all; functional if it loaded and produced the wrong result.
 
 Signals worth acting on:
 

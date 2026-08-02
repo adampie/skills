@@ -1,8 +1,8 @@
 # Format rules
 
 From the Agent Skills specification at https://agentskills.io/specification.
-These are mechanical and enforced by `mise run validate-skills`. Nothing here
-is a matter of taste.
+Nothing here is a matter of taste. Most of it is enforced by
+`mise run validate-skills`; the size budget is not, and is marked below.
 
 ## Layout
 
@@ -16,6 +16,9 @@ skill-name/
 
 Any additional files are permitted. In this repository skills sit under
 `plugins/PLUGIN/skills/SKILL/`.
+
+`SKILL.md` is the entrypoint and is spelled exactly that way. `skill.md` and
+`SKILL.MD` are different filenames and are not recognised.
 
 ## Frontmatter
 
@@ -52,8 +55,9 @@ metadata:
 
 ## Size budget
 
-Progressive disclosure means three loading stages, and the budget differs at
-each:
+Recommendations, not validation gates: the validator warns past 500 lines and
+does not count tokens at all. Progressive disclosure means three loading
+stages, and the budget differs at each:
 
 1. **Metadata**, roughly 100 tokens, loaded at startup for every installed
    skill whether used or not.
@@ -79,10 +83,13 @@ model may get wrong.
 
 ## Validating
 
-`scripts/validate_skill.py` enforces the rules on this page, plus the Claude
-conventions in `platform.md`. It is what `mise run validate-skills` runs, and
-it shares its rule definitions with `scripts/scaffold.py` via `skillspec.py`,
-so a skill cannot be created in a state the validator rejects.
+`scripts/validate_skill.py` checks the frontmatter fields and the file name,
+plus the Claude conventions in `platform.md`. It warns rather than fails on the
+500-line body, and does not judge token count, description quality, or
+reference depth: those need a reader. It is what `mise run validate-skills`
+runs, and it shares its name and description rules with `scripts/scaffold.py`
+via `skillspec.py`, so a skill cannot be created in a state the validator
+rejects.
 
 The specification publishes a reference validator, `skills-ref`, which its
 authors describe as a demonstration not intended for production. It is useful
