@@ -61,8 +61,11 @@ For each layer, read `git log <base>..<branch>` and its diff, then write:
   prefix at most, and only if the repo already uses one (`INF-318:`, `feat(api):`). Take
   a ticket ID from the branch name or commits if there is one.
 - **Body:** why first, in one or two sentences, then what changed as one-line bullets.
-  British English, no em-dashes, no hype. Backticks only for exact commands or ambiguous
-  paths.
+  British English, no em-dashes, no hype.
+- **Backticks only for text the reader would type:** a command, a flag, a path. Not skill
+  names, not concepts, not ordinary words that happen to name a tool. Monospace breaks the
+  line visually, so a body where every third phrase is grey reads worse than one with
+  none. Write "there is no push skill", not "there is no `push` skill".
 - **Aim for 100 words and stop at 200.** A reviewer should take it in without scrolling.
   Past that, reviewers skim and the detail is wasted anyway.
 - **Cut anything the diff already says.** No file-by-file walkthrough, no narrating a
