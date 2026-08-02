@@ -1,7 +1,7 @@
 ---
 name: sync
 description: "Rebase a stack onto a moved trunk, absorb merged layers, and make changes to a lower layer mid-stack, using gh stack sync and gh stack rebase. Use when the user says sync my stack, rebase the stack, main moved, my PR merged, update the stack, or when a change belongs in a branch below the one they are on. Handles rebase conflicts. Does not create pull requests, which stack:submit does."
-compatibility: Requires gh 2.0+ and the github/gh-stack extension
+compatibility: Requires gh 2.0+ with the github/gh-stack extension v0.1.0
 metadata:
   author: adampie
   version: "0.1.0"
@@ -70,8 +70,7 @@ gh stack top             # or: gh stack checkout <branch you came from>
 `rebase --upstack` fetches from the remote, so it fails with `no remotes configured` in a
 repo that has none. Use `--no-trunk` there.
 
-Commit messages follow the same rules as `stack:commit`: imperative, sentence case, under
-70 characters, British English, no em-dashes.
+Commit messages follow the same rules as `stack:commit`.
 
 Push the rewritten branches with `gh stack push`, or `stack:submit` if any layer still
 needs a PR.
@@ -99,14 +98,37 @@ rebased, merged, pruned, unchanged. Name anything still unpushed.
 
 ## Example
 
-User: "I'm on the ui branch but this validation belongs in the API layer."
+User: "I'm on the top branch but this validation belongs in the layer below."
 
-1. `gh stack view --json` shows `auth -> api-routes -> ui`, current is `ui`.
-2. `gh stack down` to `api-routes`.
-3. Write the validation, `git add`, commit as "Reject requests with an empty user ID".
-4. `gh stack rebase --upstack` replays `ui` on the new `api-routes`.
-5. `gh stack top` back to `ui`, `gh stack push`.
-6. Report: `api-routes` gained a commit, `ui` rebased, both pushed.
+```
+$ gh stack down
+✓ Checked out store-get, 1 branch down
+```
+
+Write the validation there, commit it, then replay everything above:
+
+```
+$ gh stack rebase --upstack
+✓ Rebased store-get onto config
+✓ Rebased user-handler onto store-get
+All upstack branches from store-get rebased locally with main (58199fa)
+To push up your changes, run `gh stack push`
+
+$ gh stack top && gh stack push
+✓ Switched to user-handler
+✓ Pushed 3 branches
+```
+
+The property worth verifying afterwards is that the change landed in the right PR and
+did not leak upward:
+
+```
+$ gh pr view 2 --json files    # store-get
+  internal/errors.go
+  internal/store.go
+$ gh pr view 3 --json files    # user-handler, untouched
+  internal/api.go
+```
 
 ## Failure modes
 

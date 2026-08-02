@@ -1,7 +1,7 @@
 ---
 name: submit
 description: "Push a stack of branches and create or update their pull requests on GitHub, using gh stack submit. Use when the user says submit the stack, open the PRs, raise these for review, push this up, put these up as PRs, or mark them ready. Opens one draft pull request per layer, each based on the layer below. Does not commit, which stack:commit does, and never merges."
-compatibility: Requires gh 2.0+ and the github/gh-stack extension
+compatibility: Requires gh 2.0+ with the github/gh-stack extension v0.1.0
 metadata:
   author: adampie
   version: "0.1.0"
@@ -106,16 +106,49 @@ One line per PR, bottom to top, with number, URL, and state. If drafts, add how 
 them: `gh pr ready <number>`. If the push succeeded but a PR failed, say so explicitly so
 the user knows the branches are published but unraised.
 
+## Landing the stack
+
+Deliberately manual. `gh stack merge --yes` merges the whole stack bottom to top, all or
+nothing, and `gh pr merge` does not work on stacked PRs at all. No skill here drives it,
+because merging is the step in this workflow with the least recoverable outcome. Tell the
+user the command and let them run it.
+
 ## Example
 
-User: "put these up as PRs."
+User: "put these up as PRs." `gh stack view --json` shows three layers on trunk `main`
+and no PRs yet. Titles and bodies are drafted from each layer's commits, previewed as
+drafts, and confirmed.
 
-1. `gh stack view --json` shows `auth -> api-routes -> ui` on trunk `main`, no PRs.
-2. Draft three titles and bodies from each layer's commits.
-3. Preview as draft, user confirms.
-4. `gh stack submit --auto` creates #41, #42, #43 with chained bases.
-5. `gh pr edit` on each to replace the auto-generated text.
-6. Report the three URLs and `gh pr ready` to un-draft.
+```
+$ gh stack submit --auto
+Checking stack state...
+Pushing to origin...
+✓ Created PR #1 for config
+✓ Created PR #2 for store-get
+✓ Created PR #3 for user-handler
+✓ Stack created on GitHub with 3 PRs (stack #4)
+✓ Pushed and synced 3 branches
+```
+
+Each base points at the layer below, which is the property to check:
+
+```
+$ gh pr list --json number,baseRefName,headRefName,isDraft
+#1 draft=true  config       -> main
+#2 draft=true  store-get    -> config
+#3 draft=true  user-handler -> store-get
+```
+
+Then `gh pr edit` on each, preserving the trailing `<sub>` footer, and report:
+
+```
+#1 https://github.com/owner/repo/pull/1  draft  config
+#2 https://github.com/owner/repo/pull/2  draft  store-get
+#3 https://github.com/owner/repo/pull/3  draft  user-handler
+
+Un-draft with: gh pr ready <number>
+Landing the stack is manual: gh stack merge --yes
+```
 
 ## Failure modes
 

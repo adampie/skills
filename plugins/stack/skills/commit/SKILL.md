@@ -1,7 +1,7 @@
 ---
 name: commit
 description: "Split a working tree into an ordered stack of branches, each with its own commits, using the gh-stack GitHub CLI extension. Use when the user wants uncommitted work turned into stacked PRs and says things like commit this as a stack, split this into layers, break this up for review, stack these changes, or start a stack. Also adds a layer on top of an existing stack. Does not push or open pull requests, which stack:submit does."
-compatibility: Requires gh 2.0+ and the github/gh-stack extension
+compatibility: Requires gh 2.0+ with the github/gh-stack extension v0.1.0, and betterleaks for secret scanning
 metadata:
   author: adampie
   version: "0.1.0"
@@ -48,20 +48,24 @@ config, which is nearly always the right answer.
 ## Never commit secrets
 
 A secret in git history is leaked even after a revert or force-push, because the blob
-stays reachable via reflog, forks, CI caches, and anyone who fetched. Scan every hunk
-and untracked file you are about to stage.
+stays reachable via reflog, forks, CI caches, and anyone who fetched.
 
-- **Paths:** `.env*`, `secrets.*`, `credentials.*`, `service-account*.json`, `*.pem`,
-  `*.key`, `*.p12`, `id_rsa`, `id_ed25519`, `.netrc`, `.pgpass`, anything under `.ssh/`,
-  `.aws/`, `.gnupg/`.
-- **Shapes:** `-----BEGIN * PRIVATE KEY-----`, `AKIA*`/`ASIA*`, `gh[pousr]_*`, `xox[abprs]-*`,
-  `sk_live_*`, `AIza*`, `sk-*`, long `eyJ*` JWTs.
-- **Assignments:** high-entropy values on names matching `KEY`, `SECRET`, `TOKEN`,
-  `PASSWORD`, `CLIENT_SECRET`, or connection strings with inline passwords.
+After staging each layer and **before** committing it, scan what is staged:
 
-Exclude the hunk or file from every layer, tell the user what you found and where before
-you start committing, and treat near-misses the same way. A false positive costs one
-round trip; a false negative costs a credential rotation.
+```bash
+betterleaks git --staged --verbose --redact --no-banner
+```
+
+Exit 0 is clean, exit 1 means findings. `--redact` keeps the secret itself out of the
+transcript, and `--staged` covers new files that `--pre-commit` would miss, since that
+one scans `git diff` and untracked files are not in it.
+
+On a finding: `git restore --staged <path>` to unstage it, drop it from every layer, and
+tell the user what was found and where before going any further. A false positive costs
+one round trip; a false negative costs a credential rotation.
+
+betterleaks judges content, not whether a path belongs in git. A `.env` or `*.pem` whose
+contents look unremarkable still passes, so exclude those on sight.
 
 ## Steps
 
@@ -134,14 +138,44 @@ what is left in the working tree, and that `stack:submit` opens the PRs.
 
 ## Example
 
-User: "commit this, it's a new auth middleware plus the API routes that use it."
+User: "commit this sensibly." Working tree holds `config.yaml` (new), `internal/store.go`
+(a new `Get` method), `internal/api.go` (new, calls `Get`), and `.env`.
 
-1. Preflight passes; no stack exists.
-2. Plan: `auth` (middleware plus its test), then `api-routes` (handlers importing it).
-   Routes depend on middleware, so middleware goes lower.
-3. `gh stack init auth`, `git add auth.go auth_test.go`, commit.
-4. `gh stack add api-routes`, `git add api.go`, commit.
-5. Report both layers and point at `stack:submit`.
+Preflight passes and no stack exists. `.env` is dropped on sight as a path that does not
+belong in git. The rest plans into three layers: `config.yaml` is mechanical, `store.go`
+is foundational, and `api.go` calls `Get` so it must sit above `store.go`.
+
+Each layer is staged, scanned, then committed:
+
+```bash
+gh stack init config      && git add config.yaml       && betterleaks git --staged --redact --no-banner && git commit -m "..."
+gh stack add store-get    && git add internal/store.go && betterleaks git --staged --redact --no-banner && git commit -m "..."
+gh stack add user-handler && git add internal/api.go   && betterleaks git --staged --redact --no-banner && git commit -m "..."
+```
+
+Had `.env` been staged, the scan would have stopped the commit:
+
+```
+┌─github-pat──○
+│ 2 │ GITHUB_TOKEN=REDACTED
+│   │              ^^^^^^^^
+│   path ............. .env
+└○
+leaks found: 1
+```
+
+Result reported to the user:
+
+```
+Stack on main, bottom to top:
+
+  config        792c081  Add request timeout and retry configuration
+  store-get     e1fe8c9  Add Store.Get to look up a user by ID
+  user-handler  14735c1  Add the user endpoint handler
+
+Left in the working tree: .env (excluded, contains credentials)
+Next: stack:submit opens one PR per layer.
+```
 
 ## Failure modes
 
