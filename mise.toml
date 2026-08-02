@@ -15,8 +15,10 @@ description = "Validate every SKILL.md against the Agent Skills format rules"
 # skill format errors reach main unless they are checked separately. The
 # checker is the one bundled with the upskill skill, so the rules enforced here
 # are the same ones it applies when creating a skill.
+# Runs under dash on Linux, so no pipefail. A failing find yields an empty
+# result, which the check below turns into a failure anyway.
 run = """
-set -euo pipefail
+set -eu
 skills=$(find plugins -mindepth 3 -maxdepth 3 -type d -path 'plugins/*/skills/*' | sort)
 if [ -z "$skills" ]; then
   echo "no skills found under plugins/*/skills/" >&2
