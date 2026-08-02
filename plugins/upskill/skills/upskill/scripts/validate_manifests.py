@@ -102,6 +102,14 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
     metadata = marketplace.get("metadata")
     plugin_root = metadata.get("pluginRoot") if isinstance(metadata, dict) else None
     base = (repo / plugin_root).resolve() if isinstance(plugin_root, str) else repo
+    if not base.is_relative_to(repo):
+        # Fall back to the repository root, so the scan below still covers the
+        # directories that are there rather than walking out of the checkout.
+        errors.append(
+            f".claude-plugin/marketplace.json: metadata.pluginRoot {plugin_root} "
+            "resolves outside the repository"
+        )
+        base = repo
 
     plugin_schema = json.loads(PLUGIN_SCHEMA.read_text())
     seen: set[str] = set()
