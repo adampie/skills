@@ -2,11 +2,29 @@
 # claude-code is installed from aqua rather than npm because the npm package
 # fetches its platform binary in a postinstall, which pnpm blocks by default.
 claude-code = "2.1.220"
+uv = "0.9.9"
 zizmor = "1.28.0"
 
 [tasks.validate]
 description = "Validate the marketplace and every plugin it registers"
 run = "claude plugin validate . --strict"
+
+[tasks.validate-skills]
+description = "Validate every SKILL.md against the Agent Skills format rules"
+# claude plugin validate reads the manifests only and never opens SKILL.md, so
+# skill format errors reach main unless they are checked separately. The
+# checker is the one bundled with the upskill skill, so the rules enforced here
+# are the same ones it applies when creating a skill.
+run = """
+set -euo pipefail
+skills=$(find plugins -mindepth 3 -maxdepth 3 -type d -path 'plugins/*/skills/*' | sort)
+if [ -z "$skills" ]; then
+  echo "no skills found under plugins/*/skills/" >&2
+  exit 1
+fi
+# shellcheck disable=SC2086
+uv run plugins/upskill/skills/upskill/scripts/validate_skill.py $skills
+"""
 
 [tasks.zizmor]
 description = "Audit the GitHub Actions workflows for security issues"
