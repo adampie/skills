@@ -8,6 +8,10 @@
   "description": "Public Claude Code plugins and Agent Skills.",
   "plugins": [
     {
+      "name": "stack",
+      "source": "./plugins/stack"
+    },
+    {
       "name": "upskill",
       "source": "./plugins/upskill"
     }

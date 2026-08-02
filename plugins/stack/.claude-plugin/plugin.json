@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "stack",
+  "version": "0.1.0",
+  "description": "Stacked pull request workflows over the github/gh-stack CLI extension, as three steps: split a working tree into an ordered chain of branches (stack:commit), push them and open one PR per layer (stack:submit), and rebase the stack as trunk moves or to change a lower layer (stack:sync). Every command runs non-interactively, and submit falls back to plain chained PRs where stacked PRs are not enabled.",
+  "author": {
+    "name": "adampie",
+    "url": "https://github.com/adampie"
+  }
+}
