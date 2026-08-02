@@ -6,5 +6,10 @@
     "url": "https://github.com/adampie"
   },
   "description": "Public Claude Code plugins and Agent Skills.",
-  "plugins": []
+  "plugins": [
+    {
+      "name": "upskill",
+      "source": "./plugins/upskill"
+    }
+  ]
 }

@@ -20,9 +20,13 @@ plugins/<plugin>/
 
 ## Adding a plugin
 
-Create `plugins/<name>/.claude-plugin/plugin.json` with `$schema`, `name`
-matching the directory, `version`, and `description`, add the skills under
-`skills/<skill>/SKILL.md`, then register the plugin in `marketplace.json`.
+The `upskill` skill does this for you: ask Claude to create a skill and it
+scaffolds the plugin, writes the `SKILL.md`, and registers the plugin here.
+
+By hand, create `plugins/<name>/.claude-plugin/plugin.json` with `$schema`,
+`name` matching the directory, `version`, and `description`, add the skills
+under `skills/<skill>/SKILL.md`, then register the plugin in
+`marketplace.json`.
 
 Release with `claude plugin tag`, which checks that `plugin.json` and the
 marketplace entry agree before creating the tag.
@@ -32,14 +36,36 @@ marketplace entry agree before creating the tag.
 Tooling is pinned in `mise.toml`. Run `mise trust` once, then:
 
 ```sh
-mise run validate    # marketplace manifest and every plugin it registers
-mise run zizmor      # audit the GitHub Actions workflows
+mise run validate            # marketplace manifest and every plugin it registers
+mise run validate-manifests  # the same manifests against the published schemas
+mise run validate-skills     # every SKILL.md against the Agent Skills spec
+mise run zizmor              # audit the GitHub Actions workflows
 ```
 
-CI runs the same tasks, so a green local run means a green build. `validate`
-runs on every push and pull request; `zizmor` runs only when a workflow or
-`mise.toml` changes. `validate` fails on an empty marketplace, so the first
-plugin has to be merged past it.
+The three validate tasks check different things:
+
+- `validate` runs `claude plugin validate`, which reads the manifests and never
+  opens `SKILL.md`.
+- `validate-manifests` checks the manifests against the
+  [marketplace](https://www.schemastore.org/claude-code-marketplace.json) and
+  [plugin](https://www.schemastore.org/claude-code-plugin-manifest.json)
+  JSON Schemas, the ones editors use, and adds the cross-file rules no schema
+  can express: registered sources exist, names match their directories, and no
+  plugin directory is left unregistered. `claude plugin validate` walks only
+  the plugins the marketplace lists, so an unregistered directory is invisible
+  to it.
+- `validate-skills` checks each skill against the Agent Skills format rules.
+
+The last two run the checkers bundled with the `upskill` skill. Skill rules are
+shared with the scaffolder, so a generated skill cannot fail validation on
+creation. The schemas are vendored under the skill's `assets/schemas/` because
+the schemastore URLs are unversioned; refresh them with the commands in
+`plugins/upskill/skills/upskill/scripts/validate_manifests.py`, run from that
+script's skill directory.
+
+CI runs these same tasks. All three validate tasks run on pull requests and
+pushes to `main`; `zizmor` runs only when a workflow or `mise.toml` changes,
+and in CI it gets a token, so it can run online audits a local run skips.
 
 ## Licence
 
