@@ -135,9 +135,14 @@ hang. Names are used verbatim, so `gh stack add refactor/foo` creates `refactor/
 the user if either check hits:
 
 ```bash
-git rev-parse --verify --quiet <name>          # local branch
-git ls-remote --exit-code --heads origin <name> # remote branch
+git remote                                        # which remote to check
+git rev-parse --verify --quiet <name>             # local branch
+git ls-remote --exit-code --heads <remote> <name> # remote branch
 ```
+
+Take the sole remote if there is one, `origin` when there are several, and skip the remote
+check when `git remote` prints nothing. A hardcoded `origin` in a repo without one exits
+128 with `does not appear to be a git repository`, which reads as neither free nor taken.
 
 `gh stack add` happily creates a layer whose name matches an abandoned remote branch from
 an earlier stack, and `gh stack view` then binds that layer to the old branch's open PR by
