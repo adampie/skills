@@ -19,10 +19,22 @@ trunk and merged layers, and put a change into a layer below the current one.
 | --- | --- |
 | Not a git repo | `git rev-parse --is-inside-work-tree` fails |
 | No stack | `gh stack view --json` fails or lists no branches |
-| Rebase already running | `.git/gh-stack-rebase-state` exists |
+| Mid-flight git operation | a marker below exists and `.git/gh-stack-rebase-state` does not |
 
-A rebase already in progress is not a failure to report and stop on. Resume it: resolve
-the conflicts per step 3, then `gh stack rebase --continue`, or `--abort` to unwind.
+```bash
+for m in gh-stack-rebase-state MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-apply rebase-merge; do
+  [ -e ".git/$m" ] && echo "in progress: $m"
+done
+```
+
+Read `gh-stack-rebase-state` first, because a gh-stack rebase in flight leaves
+`.git/rebase-merge` alongside it. Judge on the other markers alone and you refuse the one
+state you are meant to pick up. Test them one at a time: in zsh an unmatched
+`.git/rebase-*` glob aborts the command before `ls` runs, checking nothing.
+
+A half-finished merge, cherry-pick, revert, or plain `git rebase` is a refusal: say which
+and stop. A gh-stack rebase is not. Resume that one: resolve the conflicts per step 3,
+then `gh stack rebase --continue`, or `--abort` to unwind.
 
 ## Which job
 
