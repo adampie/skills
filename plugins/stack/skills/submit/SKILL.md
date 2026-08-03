@@ -121,8 +121,9 @@ For each PR created in step 4:
 gh pr edit <number> --title "..." --body-file <tmpfile> --add-assignee @me
 ```
 
-Skip PRs that already existed unless the user asked to refresh them. Delete the temp
-directory afterwards.
+Skip PRs that already existed unless the user asked to refresh them. Leave the temp
+directory where it is: an `rm -rf` outside the repo can raise a permission prompt and stall
+the run, and `mktemp -d` gave the run a path of its own that nothing else will collide with.
 
 **Always assign.** `gh stack submit` leaves a PR unassigned, so it shows up in nobody's
 list of work to chase. Use `@me` rather than a login: it resolves to whoever authenticated
