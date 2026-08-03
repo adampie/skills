@@ -115,9 +115,18 @@ PR per unmerged layer, with each base pointing at the layer below.
 
 ### 5. Apply the real titles and bodies
 
-For each PR created in step 4, `gh pr edit <number> --title "..." --body-file <tmpfile>`.
+For each PR created in step 4:
+
+```bash
+gh pr edit <number> --title "..." --body-file <tmpfile> --add-assignee @me
+```
+
 Skip PRs that already existed unless the user asked to refresh them. Delete the temp
 files afterwards.
+
+**Always assign.** `gh stack submit` leaves a PR unassigned, so it shows up in nobody's
+list of work to chase. Use `@me` rather than a login: it resolves to whoever authenticated
+`gh`, which is the person who opened the stack, and keeps the skill portable.
 
 **Preserve what is already in the body.** It is not empty when `submit` creates it: it
 carries a `<sub>Stack created with GitHub Stacks CLI</sub>` footer, which is what gives
@@ -177,7 +186,8 @@ $ gh pr list --json number,baseRefName,headRefName,isDraft
 #3 draft=true  user-handler -> store-get
 ```
 
-Then `gh pr edit` on each, prepending the prose above the `<sub>` footer, and report:
+Then `gh pr edit` on each, prepending the prose above the `<sub>` footer and assigning
+yourself, and report:
 
 ```
 #1 https://github.com/owner/repo/pull/1  draft  config
@@ -203,5 +213,6 @@ pushed. Fix the rejected branch and rerun the same command; it is safe to repeat
 **Every PR in the stack is already merged.** `submit` forks the unmerged branches into a
 new stack rooted at trunk. Expected, not an error. Say it happened.
 
-**Never** force-push, merge, approve, or pass `--reviewer`, `--label`, or `--assignee`
-unless the user asked. CODEOWNERS usually handles reviewers.
+**Never** force-push, merge, approve, or pass `--reviewer` or `--label` unless the user
+asked. CODEOWNERS usually handles reviewers. Self-assignment is the exception and is
+standing policy, covered in step 5.
