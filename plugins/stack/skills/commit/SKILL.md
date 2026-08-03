@@ -166,13 +166,17 @@ also arrive as a single hunk, so there is often nothing to split by hunk anyway.
 intermediate version of the file instead, and restore the full one afterwards:
 
 ```bash
-cp internal/store.go /tmp/store.full.go   # keep the finished version
+mktemp -d                                 # use the printed path as <dir>
+cp internal/store.go <dir>/store.full.go  # keep the finished version
 # write internal/store.go holding only the lower layer's changes
 git add internal/store.go && git commit -m "..."
 gh stack add <next-layer>
-cp /tmp/store.full.go internal/store.go   # the rest becomes the next layer
+cp <dir>/store.full.go internal/store.go  # the rest becomes the next layer
 git add internal/store.go && git commit -m "..."
 ```
+
+A fixed path like `/tmp/store.full.go` is another run's path too, and the finished version
+of the file is the only copy that exists at that point.
 
 Check with `git diff <lower>..<upper> -- <path>` that the upper layer adds only what you
 meant to defer.

@@ -122,7 +122,7 @@ gh pr edit <number> --title "..." --body-file <tmpfile> --add-assignee @me
 ```
 
 Skip PRs that already existed unless the user asked to refresh them. Delete the temp
-files afterwards.
+directory afterwards.
 
 **Always assign.** `gh stack submit` leaves a PR unassigned, so it shows up in nobody's
 list of work to chase. Use `@me` rather than a login: it resolves to whoever authenticated
@@ -139,10 +139,16 @@ bot blocks after it. Do not go looking for it at the end. Read the current body,
 prepend your prose and a blank line, keeping everything else in the order it was in:
 
 ```bash
-gh pr view <number> --json body --jq .body > /tmp/body.old
-{ cat /tmp/body.new; echo; cat /tmp/body.old; } > /tmp/body.final
-gh pr edit <number> --body-file /tmp/body.final
+mktemp -d                                                  # use the printed path as <dir>
+gh pr view <number> --json body --jq .body > <dir>/body.old
+{ cat <dir>/body.new; echo; cat <dir>/body.old; } > <dir>/body.final
+gh pr edit <number> --body-file <dir>/body.final
 ```
+
+One directory per run, and paste its literal path into the commands that follow: each of
+these runs in its own shell, so a `$dir` variable is empty by the second line. Fixed
+`/tmp/body.*` names are shared with every other run on the machine, and losing that race
+puts one PR's prose on another.
 
 Afterwards, confirm the footer survived: `gh pr view <number> --json body --jq .body |
 grep -c 'Stacks CLI'` should print at least 1.
