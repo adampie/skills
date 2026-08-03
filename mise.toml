@@ -2,7 +2,7 @@
 # claude-code is installed from aqua rather than npm because the npm package
 # fetches its platform binary in a postinstall, which pnpm blocks by default.
 claude-code = "2.1.220"
-uv = "0.9.9"
+uv = "0.11.32"
 zizmor = "1.28.0"
 
 [tasks.validate]
