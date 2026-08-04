@@ -129,30 +129,37 @@ the run, and `mktemp -d` gave the run a path of its own that nothing else will c
 list of work to chase. Use `@me` rather than a login: it resolves to whoever authenticated
 `gh`, which is the person who opened the stack, and keeps the skill portable.
 
-**Preserve what is already in the body.** It is not empty when `submit` creates it: it
-carries a `<sub>Stack created with GitHub Stacks CLI</sub>` footer, which is what gives
-readers stack navigation, and review bots may have appended blocks fenced in `<!-- -->`. A
-plain `--body-file` replaces the lot, and a later `submit` or `sync` does **not** put them
-back.
+**Drop the CLI attribution, keep anything a person or a bot wrote.** The body is not empty
+when `submit` creates it. It holds the auto-generated prose from the commits, a `---`
+separator, and a `<sub>Stack created with GitHub Stacks CLI</sub>` line. None of that is
+worth keeping: the prose is superseded by the body drafted in step 2, and the `<sub>` line
+is attribution and a feedback link, not stack navigation. Navigation comes from the stack
+object `submit` creates on GitHub, which the web UI renders whether or not the line is
+there.
 
-Despite reading as a footer, the `<sub>` block is the **first** line of the body, with any
-bot blocks after it. Do not go looking for it at the end. Read the current body, then
-prepend your prose and a blank line, keeping everything else in the order it was in:
+Review bot blocks fenced in `<!-- -->` are the exception. Those are somebody's output and
+a plain `--body-file` destroys them, which no later `submit` or `sync` undoes.
+
+Do not assume a position for any of these. The generated layout has varied between
+versions, so find the blocks rather than slicing by line number:
 
 ```bash
 mktemp -d                                                  # use the printed path as <dir>
 gh pr view <number> --json body --jq .body > <dir>/body.old
-{ cat <dir>/body.new; echo; cat <dir>/body.old; } > <dir>/body.final
-gh pr edit <number> --body-file <dir>/body.final
+grep -n '<!--' <dir>/body.old                              # bot blocks, if any
+gh pr edit <number> --body-file <dir>/body.new             # no bots: the draft alone
+```
+
+With bot blocks present, append them below the draft and check they survived:
+
+```bash
+gh pr view <number> --json body --jq .body | grep -c '<!--'
 ```
 
 One directory per run, and paste its literal path into the commands that follow: each of
 these runs in its own shell, so a `$dir` variable is empty by the second line. Fixed
 `/tmp/body.*` names are shared with every other run on the machine, and losing that race
 puts one PR's prose on another.
-
-Afterwards, confirm the footer survived: `gh pr view <number> --json body --jq .body |
-grep -c 'Stacks CLI'` should print at least 1.
 
 ### 6. Report
 
@@ -193,7 +200,7 @@ $ gh pr list --json number,baseRefName,headRefName,isDraft
 #3 draft=true  user-handler -> store-get
 ```
 
-Then `gh pr edit` on each, prepending the prose above the `<sub>` footer and assigning
+Then `gh pr edit` on each, replacing the generated body with the drafted one and assigning
 yourself, and report:
 
 ```
