@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fact-check",
+  "version": "0.2.0",
+  "description": "Fact-checking against live web sources and against the local codebase. Extracts the factual claims from a document, a single statement, or Claude's own earlier output, verifies each one by search or by tracing the call paths that decide the behaviour, and reports the findings inline worst first, with a verdict, a correction and a citation per claim.",
+  "author": {
+    "name": "adampie",
+    "url": "https://github.com/adampie"
+  }
+}
