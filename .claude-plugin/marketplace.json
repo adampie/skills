@@ -8,6 +8,10 @@
   "description": "Public Claude Code plugins and Agent Skills.",
   "plugins": [
     {
+      "name": "fact-check",
+      "source": "./plugins/fact-check"
+    },
+    {
       "name": "stack",
       "source": "./plugins/stack"
     },
