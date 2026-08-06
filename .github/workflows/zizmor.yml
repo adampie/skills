@@ -1,7 +1,6 @@
 name: Zizmor
 
-# mise.toml is in scope because it pins zizmor itself: a version bump brings new
-# audits, which need to run against the existing workflows.
+# mise.toml is in scope because it pins zizmor: a bump brings new audits to run.
 on:
   pull_request:
     paths:

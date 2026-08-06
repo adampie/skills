@@ -44,8 +44,7 @@ def split_frontmatter(text: str) -> tuple[str | None, str, list[str]]:
         return None, "", ["SKILL.md must begin with a --- frontmatter delimiter"]
     rest = text[4:]
     # A delimiter immediately after the opening one is empty frontmatter, not a
-    # missing close. Report it as the empty mapping it is, so the required-field
-    # errors below say what is actually wrong.
+    # missing close, so it must not report as unclosed.
     if rest.startswith("---\n"):
         return "", rest[4:], []
     if rest.rstrip("\n") == "---":
@@ -73,9 +72,8 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
         if actual:
             return [f"file must be named exactly SKILL.md, found {actual[0]}"], []
         return ["no SKILL.md found"], []
-    # On a case-insensitive filesystem the open above succeeded for skill.md or
-    # SKILL.MD, so compare against the name the directory really holds. Removing
-    # this check would leave macOS with no case check at all.
+    # On a case-insensitive filesystem is_file() above succeeded for skill.md or
+    # SKILL.MD, so this is the only case check macOS gets.
     if skill_file.name not in {p.name for p in path.iterdir()}:
         errors.append("file must be named exactly SKILL.md")
 
@@ -85,8 +83,8 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
             "or references/ (Claude)"
         )
 
-    # Explicit encoding: the locale default would fail on a non-ASCII skill
-    # under a non-UTF-8 locale.
+    # Explicit encoding: the locale default fails on a non-ASCII skill under a
+    # non-UTF-8 locale.
     front, body, split_errors = split_frontmatter(skill_file.read_text(encoding="utf-8"))
     if split_errors:
         return split_errors, warnings
@@ -115,7 +113,7 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
         errors.extend(check_description(data["description"]))
 
     # Presence, not truthiness: `compatibility:` with no value parses as None,
-    # which is a field supplied empty rather than a field left out.
+    # which is a field supplied empty rather than left out.
     if "compatibility" in data:
         compatibility = data["compatibility"]
         if not isinstance(compatibility, str) or not compatibility.strip():

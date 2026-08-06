@@ -1,6 +1,5 @@
 [tools]
-# claude-code is installed from aqua rather than npm because the npm package
-# fetches its platform binary in a postinstall, which pnpm blocks by default.
+# Not the npm package: its postinstall fetches the platform binary, which pnpm blocks.
 claude-code = "2.1.220"
 uv = "0.11.32"
 zizmor = "1.28.0"
@@ -11,12 +10,8 @@ run = "claude plugin validate . --strict"
 
 [tasks.validate-skills]
 description = "Validate every SKILL.md against the Agent Skills format rules"
-# claude plugin validate reads the manifests only and never opens SKILL.md, so
-# skill format errors reach main unless they are checked separately. The
-# checker is the one bundled with the upskill skill, so the rules enforced here
-# are the same ones it applies when creating a skill.
-# Runs under dash on Linux, so no pipefail. A failing find yields an empty
-# result, which the check below turns into a failure anyway.
+# claude plugin validate reads the manifests only and never opens SKILL.md.
+# Runs under dash on Linux, so no pipefail.
 run = """
 set -eu
 skills=$(find plugins -mindepth 3 -maxdepth 3 -type d -path 'plugins/*/skills/*' | sort)
@@ -30,9 +25,6 @@ uv run plugins/upskill/skills/upskill/scripts/validate_skill.py $skills
 
 [tasks.validate-manifests]
 description = "Validate the manifests against the published JSON Schemas"
-# Checks the schemas editors use, and adds the cross-file rules no schema can
-# express. claude plugin validate walks only the plugins the marketplace lists,
-# so a plugin directory that was never registered is invisible to it.
 run = "uv run plugins/upskill/skills/upskill/scripts/validate_manifests.py ."
 
 [tasks.zizmor]

@@ -148,8 +148,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Validate everything before writing anything, so a rejected name cannot
-    # leave a half-created plugin behind.
+    # Everything that can refuse the run happens before the first write, so a
+    # refusal leaves the repository untouched.
     fail_all(
         check_name("plugin", args.plugin)
         + check_name("skill", args.skill)
@@ -160,8 +160,6 @@ def main() -> None:
     marketplace_path = repo / ".claude-plugin" / "marketplace.json"
     marketplace = read_json(marketplace_path)
 
-    # Everything that can refuse the run happens before the first write, so a
-    # refusal leaves the repository untouched.
     plugin_dir = repo / "plugins" / args.plugin
     skill_dir = plugin_dir / "skills" / args.skill
     if skill_dir.exists():
@@ -169,8 +167,8 @@ def main() -> None:
     entry = marketplace_entry(marketplace, args.plugin)
     source = f"./plugins/{args.plugin}"
     if entry is not None and entry.get("source") != source:
-        # Writing the skill under plugins/ would leave it unreachable, since
-        # the marketplace fetches this plugin from somewhere else.
+        # The marketplace fetches this plugin elsewhere, so a skill written
+        # under plugins/ would be unreachable.
         fail(
             f"{args.plugin} is registered with source {entry.get('source')!r}, "
             f"not {source!r}"

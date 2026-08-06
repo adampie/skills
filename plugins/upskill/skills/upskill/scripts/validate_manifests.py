@@ -36,15 +36,13 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "assets" / "schemas"
 MARKETPLACE_SCHEMA = SCHEMA_DIR / "claude-code-marketplace.json"
 PLUGIN_SCHEMA = SCHEMA_DIR / "claude-code-plugin-manifest.json"
 
-# The published URLs, which manifests should declare so editors validate them
-# as they are written.
+# Manifests should declare these so editors validate them as they are written.
 MARKETPLACE_SCHEMA_URL = "https://www.schemastore.org/claude-code-marketplace.json"
 PLUGIN_SCHEMA_URL = "https://www.schemastore.org/claude-code-plugin-manifest.json"
 
-# Both schemas constrain URLs with `format: uri`, which jsonschema treats as an
-# annotation unless a checker is supplied, and whose checker in turn only
-# registers when rfc3986-validator is installed. Hence the second dependency:
-# without it this asserts nothing and the format rules are silently skipped.
+# jsonschema treats `format: uri` as an annotation without a checker, and the
+# uri checker only registers when rfc3986-validator is installed; without that
+# dependency this silently asserts nothing.
 FORMAT_CHECKER = FormatChecker()
 
 
@@ -80,8 +78,6 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
     if load_errors:
         return [f".claude-plugin/marketplace.json: {e}" for e in load_errors], []
     if not isinstance(marketplace, dict):
-        # Valid JSON that is not an object parses fine and then breaks every
-        # lookup below, so stop here rather than raising out of the validator.
         return [
             f".claude-plugin/marketplace.json: root must be an object, got "
             f"{type(marketplace).__name__}"
@@ -97,14 +93,12 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
             f"{MARKETPLACE_SCHEMA_URL}"
         )
 
-    # Sources resolve against the marketplace root unless metadata.pluginRoot
-    # moves the base.
+    # Sources resolve against the marketplace root unless pluginRoot moves it.
     metadata = marketplace.get("metadata")
     plugin_root = metadata.get("pluginRoot") if isinstance(metadata, dict) else None
     base = (repo / plugin_root).resolve() if isinstance(plugin_root, str) else repo
     if not base.is_relative_to(repo):
-        # Fall back to the repository root, so the scan below still covers the
-        # directories that are there rather than walking out of the checkout.
+        # Fall back to the repository root so the scan below stays in the checkout.
         errors.append(
             f".claude-plugin/marketplace.json: metadata.pluginRoot {plugin_root} "
             "resolves outside the repository"
@@ -147,8 +141,7 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
 
         manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
         if not manifest_path.is_file():
-            # strict: false means the marketplace entry carries the manifest,
-            # which the marketplace schema has already checked.
+            # strict: false means the marketplace entry carries the manifest.
             if entry.get("strict", True):
                 errors.append(f"{source}: no .claude-plugin/plugin.json")
             continue
@@ -170,7 +163,6 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
         if manifest.get("$schema") != PLUGIN_SCHEMA_URL:
             warnings.append(f"{rel}: $schema should be {PLUGIN_SCHEMA_URL}")
 
-        # Cross-manifest consistency, which neither schema can express.
         if manifest.get("name") != name:
             errors.append(
                 f"{rel}: name {manifest.get('name')!r} does not match marketplace "
@@ -179,8 +171,8 @@ def check(repo: Path) -> tuple[list[str], list[str]]:
         if "version" not in manifest:
             warnings.append(f"{rel}: no version, so the plugin cannot be tagged")
 
-    # Compare directories rather than names, so a marketplace that moves its
-    # base or sources a plugin remotely is judged on what it actually points at.
+    # Resolved directories, not names: pluginRoot can move the base, and a
+    # remote source has no local directory at all.
     scan_dir = base if base != repo else repo / "plugins"
     if scan_dir.is_dir():
         for child in sorted(scan_dir.iterdir()):
