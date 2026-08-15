@@ -4,7 +4,7 @@ description: "Push a stack of branches and create or update their pull requests 
 compatibility: Requires gh 2.0+ with the github/gh-stack extension v0.1.0
 metadata:
   author: adampie
-  version: "0.1.0"
+  version: "0.1.1"
   tested-against: gh-stack v0.1.0
 ---
 
@@ -121,9 +121,11 @@ For each PR created in step 4:
 gh pr edit <number> --title "..." --body-file <tmpfile> --add-assignee @me
 ```
 
-Skip PRs that already existed unless the user asked to refresh them. Leave the temp
-directory where it is: an `rm -rf` outside the repo can raise a permission prompt and stall
-the run, and `mktemp -d` gave the run a path of its own that nothing else will collide with.
+Skip PRs that already existed unless the user asked to refresh them, except for the
+attribution block below: strip that from every PR the run touched, refreshed or not. Leave
+the temp directory where it is: an `rm -rf` outside the repo can raise a permission prompt
+and stall the run, and `mktemp -d` gave the run a path of its own that nothing else will
+collide with.
 
 **Always assign.** `gh stack submit` leaves a PR unassigned, so it shows up in nobody's
 list of work to chase. Use `@me` rather than a login: it resolves to whoever authenticated
@@ -136,6 +138,28 @@ worth keeping: the prose is superseded by the body drafted in step 2, and the `<
 is attribution and a feedback link, not stack navigation. Navigation comes from the stack
 object `submit` creates on GitHub, which the web UI renders whether or not the line is
 there.
+
+The separator is worse than clutter. `submit` appends it directly under the last line of
+prose, and a `---` on the line after a paragraph is a setext heading in GitHub Markdown,
+so the closing paragraph renders as a giant bold title. Delete the separator and the
+`<sub>` line together, as one block:
+
+```
+---
+
+<sub>Stack created with <a href="https://github.com/github/gh-stack">GitHub Stacks CLI</a> • <a href="https://gh.io/stacks-feedback">Give Feedback 💬</a></sub>
+```
+
+`submit` re-appends this on every run, so a body written before or during step 4 gets it
+back. Strip it after the last `gh stack submit` of the run, and check it is gone rather
+than assuming the edit took:
+
+```bash
+gh pr view <number> --json body --jq .body | grep -c 'gh-stack'   # expect 0
+```
+
+The same applies after `stack:sync` or any later `submit` on an existing PR: the block
+returns and the heading breakage returns with it.
 
 Review bot blocks fenced in `<!-- -->` are the exception. Those are somebody's output and
 a plain `--body-file` destroys them, which no later `submit` or `sync` undoes.
