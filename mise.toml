@@ -1,6 +1,6 @@
 [tools]
 # Not the npm package: its postinstall fetches the platform binary, which pnpm blocks.
-claude-code = "2.1.220"
+claude-code = "2.1.226"
 uv = "0.12.1"
 zizmor = "1.28.0"
 
