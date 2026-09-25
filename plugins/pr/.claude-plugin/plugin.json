@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "pr",
+  "version": "0.2.0",
+  "description": "Pull request workflows in three steps: commit a working tree onto a branch or split it into a chain of branches (pr:commit), push and open or update the pull requests (pr:submit), and rebase as trunk moves (pr:sync). One branch and one PR by default; stacked PRs over the github/gh-stack CLI extension when the change needs layers. Commit messages and PR descriptions follow the same rules either way.",
+  "author": {
+    "name": "adampie",
+    "url": "https://github.com/adampie"
+  }
+}

@@ -12,8 +12,8 @@
       "source": "./plugins/fact-check"
     },
     {
-      "name": "stack",
-      "source": "./plugins/stack"
+      "name": "pr",
+      "source": "./plugins/pr"
     },
     {
       "name": "upskill",
