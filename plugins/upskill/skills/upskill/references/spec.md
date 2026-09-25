@@ -81,6 +81,16 @@ Run scripts/extract.py to pull the tables out.
 Avoid a reference that points at another reference. Each hop is a decision the
 model may get wrong.
 
+The exception, a convention of this repository rather than a rule of the
+specification: rules that several skills in one plugin must apply identically
+go in a plugin-level `references/`, read as `../../references/TOPIC.md` and
+named as such, since a skill is given its own directory and not the plugin
+root. `plugins/pr` does this for commit messages and pull request bodies. The
+alternative is a copy per skill, which drifts the first time one is edited
+alone. Still one hop, and still no reference pointing at another; what changes
+is only that the file sits above the skill. Anything one skill owns stays in
+that skill's own `references/`.
+
 ## Validating
 
 `scripts/validate_skill.py` checks the frontmatter fields and the file name,

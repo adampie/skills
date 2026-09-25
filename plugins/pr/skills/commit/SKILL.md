@@ -1,17 +1,18 @@
 ---
 name: commit
-description: "Split a working tree into an ordered stack of branches, each with its own commits, using the gh-stack GitHub CLI extension. Use when the user wants uncommitted work turned into stacked PRs and says things like commit this as a stack, split this into layers, break this up for review, stack these changes, or start a stack. Also adds a layer on top of an existing stack. Does not push or open pull requests, which stack:submit does."
-compatibility: Requires gh 2.0+ with the github/gh-stack extension v0.1.0, and betterleaks for secret scanning
+description: "Commit a working tree onto a branch ready for review: one branch when the change is one pull request, or an ordered stack of branches when it needs layers, using the gh-stack GitHub CLI extension. Use when the user says commit this, commit this sensibly, put this on a branch, get this ready for review, or wants uncommitted work turned into stacked PRs with commit this as a stack, split this into layers, break this up for review. Also adds a layer on top of an existing stack. Does not push or open pull requests, which pr:submit does."
+compatibility: Requires gh 2.0+, betterleaks for secret scanning, and the github/gh-stack extension v0.1.0 for stacks only
 metadata:
   author: adampie
-  version: "0.1.0"
+  version: "0.2.0"
   tested-against: gh-stack v0.1.0
 ---
 
 # Commit
 
-Turn a working tree into an ordered chain of branches, each holding one layer of the
-change and its own commits. Landing the layers is `stack:submit`.
+Turn a working tree into committed branches. One branch when the change reviews
+as a single pull request, an ordered chain of branches when it does not. Raising
+the pull requests is `pr:submit`.
 
 ## Refuse first
 
@@ -23,7 +24,7 @@ Check all of these before touching anything. Report the reason and stop.
 | Nothing to commit | `git status --porcelain` is empty |
 | Detached HEAD | `git symbolic-ref -q HEAD` fails |
 | Mid-flight git operation | the marker loop below prints anything |
-| Extension missing | `gh extension list` has no `gh stack` |
+| Extension missing, stacks only | `gh extension list` has no `gh stack` |
 
 Test the markers one at a time rather than with a glob:
 
@@ -71,7 +72,7 @@ global config, which is nearly always the right answer.
 A secret in git history is leaked even after a revert or force-push, because the blob
 stays reachable via reflog, forks, CI caches, and anyone who fetched.
 
-After staging each layer and **before** committing it, scan what is staged:
+After staging each commit and **before** making it, scan what is staged:
 
 ```bash
 betterleaks git --staged --verbose --redact --no-banner
@@ -81,7 +82,7 @@ Exit 0 is clean, exit 1 means findings. `--redact` keeps the secret itself out o
 transcript, and `--staged` covers new files that `--pre-commit` would miss, since that
 one scans `git diff` and untracked files are not in it.
 
-On a finding: `git restore --staged <path>` to unstage it, drop it from every layer, and
+On a finding: `git restore --staged <path>` to unstage it, drop it from every commit, and
 tell the user what was found and where before going any further. A false positive costs
 one round trip; a false negative costs a credential rotation.
 
@@ -95,30 +96,58 @@ contents look unremarkable still passes, so exclude those on sight.
 - `git status --porcelain=v1` for paths and states.
 - `git diff HEAD` for all tracked modifications.
 - Read each untracked file directly; they have no prior version.
-- `git log -20 --format='%s%n%n%b%n---'` to learn the repo's message format.
+- `git branch --show-current` and `git log --oneline -5` for where HEAD sits.
 - `gh stack view --json 2>/dev/null` to see whether a stack already exists.
 
 Treat staged, unstaged, and untracked as one pool. Run `git reset` to unstage, so
-staging is per-layer from here. Say so in one line; file contents are untouched.
+staging is per-commit from here. Say so in one line; file contents are untouched.
 
-### 2. Plan the layers
+### 2. Decide the shape
 
-Drop the secrets first, then group what is left.
+Drop the secrets first, then group what is left into concerns: one concern is one
+thing that builds, passes and reviews on its own.
 
-- **One layer is one concern that builds on its own.** Every layer must compile and pass
-  on its own, because each becomes a PR that could be the last one merged.
+| Situation | Shape |
+| --- | --- |
+| One concern | One branch, step 3 |
+| Several concerns, independent of each other | One branch each, committed and submitted separately |
+| Several concerns that stack: B needs A | A stack, step 4 |
+| A stack already exists and HEAD is in it | A stack, step 4 |
+| The user asked for a stack | A stack, step 4 |
+
+**One branch is the default.** A stack costs the reviewer a chain to follow and the
+author a rebase every time a layer merges, so it earns its place only when the parts
+genuinely depend on each other and are worth reviewing apart. Say which shape the change
+came out as and why, before creating anything.
+
+When grouping:
+
 - **Dependencies point down.** If code in layer B needs code in layer A, A is the same
   layer or lower. This constraint outranks every preference below.
 - **Group hunks that share a why.** A rename plus its four call sites is one layer, not
   five. Two unrelated changes in one file are two layers.
 - **Order:** mechanical setup (dep bumps, config, formatting), then shared foundations
   (models, schemas, utilities), then consumers (handlers, UI), then tests and docs.
-- **Do not manufacture layers.** One layer is a fine answer for a small change.
+- **Do not manufacture layers.** Aim for the fewest that keep each one reviewable.
 
-Aim for the fewest layers that keep each one reviewable. Say the plan out loud before
-creating anything.
+### 3. One branch
 
-### 3. Create the layers
+Commit on the current branch when HEAD is already on a feature branch. When HEAD is on
+trunk, create one first:
+
+```bash
+git checkout -b <name>
+```
+
+Name it the way the repo already names branches, from `git branch -r --sort=-committerdate`,
+and check the name is free by the rules in step 4. A ticket ID in the change gets the
+branch name the tracker suggests.
+
+Then, per concern: `git add <paths>`, scan, `git commit`. Several small commits on one
+branch are fine and often better than one; `pr:submit` writes the PR body from all of
+them.
+
+### 4. A stack
 
 Pick the path from what `gh stack view --json` returned in step 1.
 
@@ -126,7 +155,7 @@ Pick the path from what `gh stack view --json` returned in step 1.
 | --- | --- |
 | No stack | `gh stack init <first-layer>` |
 | On the top branch | `gh stack add <next-layer>` per layer |
-| Not on the top branch | `gh stack top` first, or hand to `stack:sync` if the change belongs lower |
+| Not on the top branch | `gh stack top` first, or hand to `pr:sync` if the change belongs lower |
 
 Always pass the branch name. Bare `gh stack init` and `gh stack add` open a prompt and
 hang. Names are used verbatim, so `gh stack add refactor/foo` creates `refactor/foo`.
@@ -147,16 +176,11 @@ check when `git remote` prints nothing. A hardcoded `origin` in a repo without o
 `gh stack add` happily creates a layer whose name matches an abandoned remote branch from
 an earlier stack, and `gh stack view` then binds that layer to the old branch's open PR by
 name alone, writing the PR number into `.git/gh-stack` even though the two histories share
-nothing but trunk. Nothing warns you. `stack:submit` reads that record, treats the PR as
-this stack's own, and pushes the new commits over it. Reusing a name from a stack you
-abandoned is the common way in.
+nothing but trunk. Nothing warns you. `pr:submit` reads that record, treats the PR as this
+stack's own, and pushes the new commits over it. Reusing a name from a stack you abandoned
+is the common way in.
 
-**Ask before starting a stack for a single layer.** If no stack exists and the plan came
-out as one layer, `gh stack init` still creates a branch and a stack, which is not what
-someone asking to commit a typo expects. Say the change looks like one layer and offer a
-plain commit on the current branch instead.
-
-For each layer in order: stage its paths with `git add <paths>`, commit, then
+For each layer in order: stage its paths with `git add <paths>`, scan, commit, then
 `gh stack add <next>`. Regenerate `git diff HEAD` between layers, since line numbers
 shift as commits land. Prefer `git add` over `gh stack add -Am`, which stages everything.
 
@@ -181,22 +205,16 @@ of the file is the only copy that exists at that point.
 Check with `git diff <lower>..<upper> -- <path>` that the upper layer adds only what you
 meant to defer.
 
-### 4. Write the messages
+### 5. Write the messages
 
-- **Format follows the repo.** Match the majority of the last 20 commits: Conventional
-  Commits, ticket prefix, or plain sentence case. Never introduce a format the repo does
-  not already use.
-- **Subject:** imperative, sentence case, under 70 characters, British English, no
-  em-dashes, no hype. Describe the change, not the mechanism.
-- **Be distinguishable.** If the subject could describe ten other commits in this repo,
-  sharpen it. "Fix parser bug" is useless to someone scanning the log.
-- **Body only when the diff does not explain itself,** and then lead with why. Skip it
-  for typos and imports. Plain text; no markdown headings or tables.
+`../../references/commit-messages.md`, relative to this skill's directory, holds the
+rules, and they are the same in both shapes. Read it before writing the first message,
+not after.
 
-### 5. Report
+### 6. Report
 
-State the stack bottom to top, one line each: `<branch>  <hash>  <subject>`. Then say
-what is left in the working tree, and that `stack:submit` opens the PRs.
+State what was committed, oldest first, one line each: `<branch>  <hash>  <subject>`.
+Then say what is left in the working tree, and that `pr:submit` opens the pull requests.
 
 ## Example
 
@@ -204,8 +222,9 @@ User: "commit this sensibly." Working tree holds `config.yaml` (new), `internal/
 (a new `Get` method), `internal/api.go` (new, calls `Get`), and `.env`.
 
 Preflight passes and no stack exists. `.env` is dropped on sight as a path that does not
-belong in git. The rest plans into three layers: `config.yaml` is mechanical, `store.go`
-is foundational, and `api.go` calls `Get` so it must sit above `store.go`.
+belong in git. The rest is three concerns and `api.go` calls `Get`, so they stack rather
+than sit side by side: `config.yaml` is mechanical, `store.go` is foundational, and
+`api.go` must sit above `store.go`.
 
 Each layer is staged, scanned, then committed:
 
@@ -236,19 +255,27 @@ Stack on main, bottom to top:
   user-handler  14735c1  Add the user endpoint handler
 
 Left in the working tree: .env (excluded, contains credentials)
-Next: stack:submit opens one PR per layer.
+Next: pr:submit opens one PR per layer.
+```
+
+Without `api.go`, the same change is one concern on one branch:
+
+```bash
+git checkout -b store-get && git add config.yaml internal/store.go \
+  && betterleaks git --staged --redact --no-banner && git commit -m "..."
 ```
 
 ## Failure modes
 
 **`can only add branches to the top of the stack` (exit 5).** You are mid-stack. Run
-`gh stack top` to add above, or use `stack:sync` to change a lower layer properly.
+`gh stack top` to add above, or use `pr:sync` to change a lower layer properly.
 
 **Exit 6, branch belongs to multiple stacks.** Check out a branch that is in one stack
 only, then retry.
 
 **`gh: unknown command "stack"`.** Install it pinned:
-`gh extension install github/gh-stack --pin v0.1.0`.
+`gh extension install github/gh-stack --pin v0.1.0`. Only stacks need it; a single branch
+is plain git.
 
 **Never rename a stacked branch with `git branch -m`.** There is no `gh stack rename`, and
 the extension does not notice: the old name stays in the stack as a layer with no commits,

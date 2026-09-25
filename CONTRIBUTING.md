@@ -7,8 +7,14 @@
 plugins/<plugin>/
   .claude-plugin/plugin.json       # plugin manifest
   skills/<skill>/SKILL.md          # one directory per skill
+  references/<topic>.md            # optional, shared by the plugin's skills
   agents/<agent>.md                # optional subagents
 ```
+
+A skill's own `references/` sits inside its directory. Rules that several
+skills in one plugin must apply identically go in the plugin-level
+`references/` instead, which a skill reads at `../../references/<topic>.md`;
+`plugins/pr` does this for commit messages and pull request bodies.
 
 ## Adding a plugin
 
