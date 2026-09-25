@@ -36,7 +36,8 @@ British English, no em-dashes, no hype.
   Not skill names, not concepts, not ordinary words that happen to name a tool.
   Monospace breaks the line visually, so a body where every third phrase is
   grey reads worse than one with none. Write "there is no push skill", not
-  "there is no `push` skill".
+  "there is no `push` skill". At most five spans and one code block; past that,
+  cut the ones naming things rather than text to type.
 - **Link rather than retell.** Point at the commit, issue, or run. Detail
   belongs in commit messages, and repeating it in the body means two copies to
   keep in step.
