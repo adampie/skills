@@ -11,12 +11,43 @@ Read the branch before writing. For a single PR that is
 
 ## Title
 
-Imperative, stands alone in a merged history, under ~70 characters. One prefix
-at most, and only if the repo already uses one (`INF-318:`, `feat(api):`). Take
-a ticket ID from the branch name or the commits if there is one.
+Imperative, stands alone in a merged history, under ~70 characters.
 
 A single-commit PR usually wants the commit subject as its title. Do not
 paraphrase it into something vaguer.
+
+### The Linear ticket
+
+Work driven by a Linear ticket carries its ID in the title, even in a repo that
+prefixes nothing: `INF-318: Rotate the Atlantis deploy key`. Sources, in order:
+the ticket this session has been working from, the branch name
+(`adampie/inf-318-rotate-deploy-key`, uppercased), then the commits. Use the ID
+only when one of those states it; a ticket mentioned in passing is not the
+ticket this branch implements, and an invented ID points a reader at someone
+else's work.
+
+Every layer of a stack carries the same prefix. One prefix at most: a repo that
+already prefixes with the same ID does not get it twice.
+
+### Repos that enforce a title format
+
+A Conventional Commits or semantic-release check rejects `INF-318:` outright,
+so look before writing:
+
+```bash
+find . -maxdepth 1 \( -name 'commitlint.config.*' -o -name '.commitlintrc*' \
+  -o -name '.releaserc*' -o -name 'release-please-config.json' \)
+grep -rlE 'semantic-pull-request|commitlint|semantic-release|release-please' .github/workflows 2>/dev/null
+```
+
+`find` rather than `ls` with those globs: zsh aborts the whole command on an
+unmatched glob, so the `ls` form checks none of the paths, including the ones
+that exist.
+
+Either hit, or a repo whose own PR titles are uniformly conventional, means the
+enforced format wins and the ticket moves to the end:
+`feat(api): rotate the deploy key (INF-318)`. Drop it to its own line in the
+body when that breaks the length limit the check imposes.
 
 ## Body
 

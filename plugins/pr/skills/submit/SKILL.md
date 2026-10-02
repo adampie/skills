@@ -4,7 +4,7 @@ description: "Push committed work to GitHub and create or update its pull reques
 compatibility: Requires gh 2.0+, and the github/gh-stack extension v0.1.0 for stacks only
 metadata:
   author: adampie
-  version: "0.2.0"
+  version: "0.3.0"
   tested-against: gh-stack v0.1.0
 ---
 
@@ -81,20 +81,27 @@ real text is applied afterwards with `gh pr edit` in step 5.
 
 One title and body per pull request, each written against that PR's own diff.
 
+A Linear ticket behind the work belongs in every title the run writes, as the
+prefix or, in a repo that enforces its own format, at the end. The reference covers
+both. Name the ticket in the step 3 preview so a wrong one is caught before the PRs
+exist.
+
 ### 3. Preview and confirm
 
 Opening PRs notifies reviewers and starts CI, so show the plan and wait for a go-ahead:
 
 ```
-Stack: auth -> api-routes -> ui   (base: main)
-Mode:  DRAFT                      (say "ready" to open for review)
+Stack:  auth -> api-routes -> ui   (base: main)
+Mode:   DRAFT                      (say "ready" to open for review)
+Ticket: INF-318                    (from the branch name)
 
-  1. auth        Add token verification middleware
-  2. api-routes  Add the user routes behind the new middleware
-  3. ui          Add the dashboard that reads the user routes
+  1. auth        INF-318: Add token verification middleware
+  2. api-routes  INF-318: Add the user routes behind the new middleware
+  3. ui          INF-318: Add the dashboard that reads the user routes
 ```
 
-A single PR is the same preview with one line. Default to draft in both modes. Open ready
+A single PR is the same preview with one line, and the ticket line goes when no
+ticket drove the work. Default to draft in both modes. Open ready
 only when the user asks.
 
 ### 4. Push and open
