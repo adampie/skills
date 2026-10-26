@@ -1,7 +1,7 @@
 [tools]
 # Not the npm package: its postinstall fetches the platform binary, which pnpm blocks.
 claude-code = "2.1.303"
-uv = "0.13.0"
+uv = "0.13.1"
 zizmor = "1.28.0"
 
 [tasks.validate]
