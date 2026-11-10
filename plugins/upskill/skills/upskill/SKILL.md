@@ -2,7 +2,7 @@
 name: upskill
 description: Creates, validates, and reviews Agent Skills inside a marketplace repository. Scaffolds the plugin and SKILL.md, registers the plugin in marketplace.json, and checks the result against the Agent Skills specification. Use when the user asks to create a skill, write a new skill, add a skill to the marketplace, scaffold a plugin, or review, improve, or fix an existing SKILL.md.
 license: MIT
-compatibility: Requires mise and a repository containing .claude-plugin/marketplace.json
+compatibility: Requires devenv and a repository containing .claude-plugin/marketplace.json
 metadata:
   author: adampie
   version: "0.1.0"
@@ -96,9 +96,9 @@ claude plugin validate TARGET_REPO --strict
 In a repository that defines the tasks, as this one does, the same three are:
 
 ```bash
-mise run validate-skills     # every SKILL.md against the format rules
-mise run validate-manifests  # manifests against the published JSON Schemas
-mise run validate            # claude plugin validate
+devenv shell validate-skills     # every SKILL.md against the format rules
+devenv shell validate-manifests  # manifests against the published JSON Schemas
+devenv shell validate            # claude plugin validate
 ```
 
 All three must pass before the skill is committed. `claude plugin validate`
@@ -117,7 +117,7 @@ worth nothing regardless of how good its instructions are.
 
 Given a skill to review, work in this order and stop at the first real problem:
 
-1. Run `mise run validate-skills` for mechanical errors.
+1. Run `devenv shell validate-skills` for mechanical errors.
 2. Judge the `description` against `references/craft.md`. Most complaints about
    a skill "not working" are triggering problems.
 3. Check size and structure against Step 3.

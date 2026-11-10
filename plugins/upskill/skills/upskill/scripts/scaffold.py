@@ -194,9 +194,9 @@ def main() -> None:
         print("then write the body, then run")
     else:
         print("\nnext: write the body, then run")
-    print("  mise run validate-skills")
-    print("  mise run validate-manifests")
-    print("  mise run validate")
+    print("  devenv shell validate-skills")
+    print("  devenv shell validate-manifests")
+    print("  devenv shell validate")
 
 
 if __name__ == "__main__":

@@ -38,9 +38,9 @@ Given:  a new skill named release-notes in plugin publishing
 When:   the skill runs end to end
 Then:   plugins/publishing/skills/release-notes/SKILL.md exists
         the plugin is registered in marketplace.json
-        mise run validate-skills passes
-        mise run validate-manifests passes
-        mise run validate passes
+        devenv shell validate-skills passes
+        devenv shell validate-manifests passes
+        devenv shell validate passes
 ```
 
 Cover the edge cases the trial run exposed, plus at least one deliberate
