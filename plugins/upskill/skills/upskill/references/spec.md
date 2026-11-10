@@ -2,7 +2,7 @@
 
 From the Agent Skills specification at https://agentskills.io/specification.
 Nothing here is a matter of taste. Most of it is enforced by
-`mise run validate-skills`; the size budget is not, and is marked below.
+`devenv shell validate-skills`; the size budget is not, and is marked below.
 
 ## Layout
 
@@ -96,7 +96,7 @@ that skill's own `references/`.
 `scripts/validate_skill.py` checks the frontmatter fields and the file name,
 plus the Claude conventions in `platform.md`. It warns rather than fails on the
 500-line body, and does not judge token count, description quality, or
-reference depth: those need a reader. It is what `mise run validate-skills`
+reference depth: those need a reader. It is what `devenv shell validate-skills`
 runs, and it shares its name and description rules with `scripts/scaffold.py`
 via `skillspec.py`, so a skill cannot be created in a state the validator
 rejects.

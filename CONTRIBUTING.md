@@ -31,16 +31,18 @@ marketplace entry agree before creating the tag.
 
 ## Validation
 
-Tooling is pinned in `mise.toml`. Run `mise trust` once, then:
+Tooling comes from nixpkgs, pinned by `devenv.lock`. Inside `devenv shell`:
 
 ```sh
-mise run validate            # marketplace manifest and every plugin it registers
-mise run validate-manifests  # the same manifests against the published schemas
-mise run validate-skills     # every SKILL.md against the Agent Skills spec
-mise run zizmor              # audit the GitHub Actions workflows
+validate            # marketplace manifest and every plugin it registers
+validate-manifests  # the same manifests against the published schemas
+validate-skills     # every SKILL.md against the Agent Skills spec
+audit-workflows     # audit the GitHub Actions workflows with zizmor
 ```
 
-The three validate tasks check different things:
+`devenv test` runs the three validate scripts.
+
+The three validate scripts check different things:
 
 - `validate` runs `claude plugin validate`, which reads the manifests and never
   opens `SKILL.md`.
@@ -61,6 +63,6 @@ the schemastore URLs are unversioned; refresh them with the commands in
 `plugins/upskill/skills/upskill/scripts/validate_manifests.py`, run from that
 script's skill directory.
 
-CI runs these same tasks. All three validate tasks run on pull requests and
-pushes to `main`; `zizmor` runs only when a workflow or `mise.toml` changes,
+CI runs these same scripts. All three validate scripts run on pull requests and
+pushes to `main`; `audit-workflows` runs only when a workflow or `devenv.lock` changes,
 and in CI it gets a token, so it can run online audits a local run skips.
